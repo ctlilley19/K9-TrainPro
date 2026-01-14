@@ -1276,3 +1276,90 @@ export interface FeatureFlags {
   multiTrainer: boolean;
   calendarScheduling: boolean;
 }
+
+// ============================================================================
+// Kennel Management Types
+// ============================================================================
+
+export type KennelStatus = 'available' | 'occupied' | 'cleaning' | 'maintenance' | 'reserved';
+export type KennelSize = 'small' | 'medium' | 'large' | 'extra_large';
+
+export interface Kennel {
+  id: string;
+  facility_id: string;
+  name: string;
+  location: string | null;
+  size: KennelSize;
+  status: KennelStatus;
+  features: string[] | null;
+  notes: string | null;
+  qr_code_url: string | null;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface KennelAssignment {
+  id: string;
+  kennel_id: string;
+  dog_id: string;
+  stay_id: string | null;
+  assigned_by: string | null;
+  assigned_at: string;
+  released_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type KennelActivityType =
+  | 'feeding'
+  | 'potty_break'
+  | 'medication'
+  | 'check'
+  | 'cleaning'
+  | 'water_refill'
+  | 'bedding_change'
+  | 'enrichment'
+  | 'grooming'
+  | 'note';
+
+export interface KennelActivityLog {
+  id: string;
+  kennel_id: string;
+  assignment_id: string | null;
+  dog_id: string | null;
+  user_id: string | null;
+  activity_type: string;
+  notes: string | null;
+  scanned_at: string;
+  created_at: string;
+}
+
+// Kennel Extended Types
+export interface KennelWithAssignment extends Kennel {
+  current_assignment: KennelAssignmentWithDog | null;
+}
+
+export interface KennelAssignmentWithDog extends KennelAssignment {
+  dog: Dog;
+  stay: BoardTrainStay | null;
+  assigned_by_user: { name: string; avatar_url: string | null } | null;
+}
+
+export interface KennelActivityLogWithDetails extends KennelActivityLog {
+  kennel: Kennel;
+  dog: Dog | null;
+  user: { name: string; avatar_url: string | null } | null;
+}
+
+// QR Code scan response
+export interface KennelQRScanData {
+  kennel: Kennel;
+  current_dog: Dog | null;
+  current_stay: BoardTrainStay | null;
+  family: Family | null;
+  recent_activities: KennelActivityLog[];
+  quick_actions: KennelActivityType[];
+}

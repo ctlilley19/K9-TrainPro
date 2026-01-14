@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/components/layout';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Input, Textarea, Select } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
 import { cn, formatDate } from '@/lib/utils';
+import { useActiveStays, useGenerateReport, useUpdateDailyReport, useSendReport } from '@/hooks';
 import {
   generateReport,
   reportTemplates,
@@ -32,6 +33,8 @@ import {
   Sparkles,
   Zap,
   FileText,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 
 // Mock dogs with today's activities
@@ -128,6 +131,12 @@ export default function NewReportPage() {
   const searchParams = useSearchParams();
   const preselectedDog = searchParams.get('dog');
 
+  // Fetch active stays from the database
+  const { data: activeStays, isLoading, error } = useActiveStays();
+  const generateReportMutation = useGenerateReport();
+  const updateReportMutation = useUpdateDailyReport();
+  const sendReportMutation = useSendReport();
+
   const [selectedDog, setSelectedDog] = useState(preselectedDog || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -147,7 +156,36 @@ export default function NewReportPage() {
     private_notes: '',
   });
 
-  const dog = mockDogsWithActivities.find((d) => d.id === selectedDog);
+  // Transform active stays to dogs with activities format
+  const dogsWithActivities = useMemo(() => {
+    if (!activeStays || activeStays.length === 0) {
+      // Fall back to mock data for demo mode
+      return mockDogsWithActivities;
+    }
+
+    return activeStays.map((stay) => {
+      // Calculate program duration from dates
+      const startDate = new Date(stay.check_in_date);
+      const endDate = stay.check_out_date ? new Date(stay.check_out_date) : new Date();
+      const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) || 28;
+      const currentDay = Math.ceil((new Date().getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+      return {
+        id: stay.dog_id,
+        name: stay.dog?.name || 'Unknown Dog',
+        breed: stay.dog?.breed || 'Unknown Breed',
+        family: stay.family?.name || 'Unknown Family',
+        photo_url: stay.dog?.photo_url || null,
+        programName: stay.program?.name || 'Board & Train',
+        programDay: currentDay,
+        totalProgramDays: totalDays,
+        activities: [] as typeof mockDogsWithActivities[0]['activities'],
+        skillAssessments: [] as typeof mockDogsWithActivities[0]['skillAssessments'],
+      };
+    });
+  }, [activeStays]);
+
+  const dog = dogsWithActivities.find((d) => d.id === selectedDog);
 
   // Auto-generate report from activities
   const handleAutoGenerate = async () => {
@@ -245,23 +283,112 @@ export default function NewReportPage() {
     }));
   };
 
+  const getMoodRating = (mood: string): number => {
+    switch (mood) {
+      case 'excellent': return 5;
+      case 'good': return 4;
+      case 'fair': return 3;
+      case 'poor': return 2;
+      default: return 4;
+    }
+  };
+
+  const getEnergyRating = (energy: string): number => {
+    switch (energy) {
+      case 'high': return 5;
+      case 'normal': return 3;
+      case 'low': return 1;
+      default: return 3;
+    }
+  };
+
+  const getAppetiteRating = (appetite: string): number => {
+    switch (appetite) {
+      case 'excellent': return 5;
+      case 'good': return 4;
+      case 'fair': return 3;
+      case 'poor': return 2;
+      default: return 4;
+    }
+  };
+
   const handleSaveDraft = async () => {
+    if (!dog) return;
+
     setIsSubmitting(true);
     try {
-      console.log('Saving draft:', { dog: selectedDog, ...formData });
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // First generate the report
+      const stay = activeStays?.find(s => s.dog_id === dog.id);
+      const programId = stay?.program_id || null;
+      const today = new Date().toISOString().split('T')[0];
+
+      const newReport = await generateReportMutation.mutateAsync({
+        dogId: dog.id,
+        programId,
+        date: today,
+      });
+
+      // Then update it with the form data
+      if (newReport?.id) {
+        await updateReportMutation.mutateAsync({
+          id: newReport.id,
+          data: {
+            auto_summary: formData.summary,
+            mood_rating: getMoodRating(formData.mood),
+            energy_level: getEnergyRating(formData.energy_level),
+            appetite_rating: getAppetiteRating(formData.appetite),
+            highlights: formData.highlights.filter(h => h.trim() !== ''),
+            trainer_notes: formData.private_notes,
+            status: 'draft',
+          },
+        });
+      }
+
       router.push('/reports');
+    } catch (err) {
+      console.error('Failed to save draft:', err);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleSendReport = async () => {
+    if (!dog) return;
+
     setIsSending(true);
     try {
-      console.log('Sending report:', { dog: selectedDog, ...formData });
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // First generate the report
+      const stay = activeStays?.find(s => s.dog_id === dog.id);
+      const programId = stay?.program_id || null;
+      const today = new Date().toISOString().split('T')[0];
+
+      const newReport = await generateReportMutation.mutateAsync({
+        dogId: dog.id,
+        programId,
+        date: today,
+      });
+
+      // Then update it with the form data and send
+      if (newReport?.id) {
+        await updateReportMutation.mutateAsync({
+          id: newReport.id,
+          data: {
+            auto_summary: formData.summary,
+            mood_rating: getMoodRating(formData.mood),
+            energy_level: getEnergyRating(formData.energy_level),
+            appetite_rating: getAppetiteRating(formData.appetite),
+            highlights: formData.highlights.filter(h => h.trim() !== ''),
+            trainer_notes: formData.private_notes,
+          },
+        });
+
+        // Send the report
+        await sendReportMutation.mutateAsync(newReport.id);
+      }
+
       router.push('/reports');
+    } catch (err) {
+      console.error('Failed to send report:', err);
     } finally {
       setIsSending(false);
     }
@@ -276,6 +403,33 @@ export default function NewReportPage() {
   dog?.activities.forEach((a) => {
     a.skills_worked?.forEach((s) => skillsPracticed.add(s));
   });
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+          <p className="text-surface-400">Loading dogs...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <AlertCircle className="h-12 w-12 text-red-500" />
+          <h2 className="text-xl font-semibold text-white">Failed to load dogs</h2>
+          <p className="text-surface-400 max-w-md">
+            {error instanceof Error ? error.message : 'An unexpected error occurred'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -296,7 +450,7 @@ export default function NewReportPage() {
             <CardHeader title="Select Dog" />
             <CardContent>
               <div className="space-y-2">
-                {mockDogsWithActivities.map((d) => (
+                {dogsWithActivities.map((d) => (
                   <button
                     key={d.id}
                     type="button"

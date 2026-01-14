@@ -28,6 +28,7 @@ import {
   MessageSquare,
   Video,
   Activity,
+  Grid3X3,
 } from 'lucide-react';
 
 interface NavItem {
@@ -80,6 +81,12 @@ const navItems: NavItem[] = [
     label: 'Status Feed',
     href: '/status-feed',
     icon: <Activity size={20} />,
+    roles: ['owner', 'admin', 'trainer'],
+  },
+  {
+    label: 'Kennels',
+    href: '/kennels',
+    icon: <Grid3X3 size={20} />,
     roles: ['owner', 'admin', 'trainer'],
   },
   {

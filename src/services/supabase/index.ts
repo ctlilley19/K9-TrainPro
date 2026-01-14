@@ -50,3 +50,9 @@ export {
   configToFeatureFlags,
   defaultFeatureFlags,
 } from './config';
+export {
+  kennelService,
+  kennelAssignmentService,
+  kennelActivityService,
+  kennelQRUtils,
+} from './kennels';

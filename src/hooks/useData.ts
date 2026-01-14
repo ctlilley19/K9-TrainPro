@@ -4095,3 +4095,275 @@ export function useToggleFeature() {
     },
   });
 }
+
+// ============================================================================
+// KENNEL MANAGEMENT HOOKS
+// ============================================================================
+
+import {
+  kennelService,
+  kennelAssignmentService,
+  kennelActivityService,
+} from '@/services/supabase/kennels';
+import type {
+  Kennel,
+  KennelWithAssignment,
+  KennelAssignment,
+  KennelActivityLog,
+  KennelStatus,
+  KennelSize,
+} from '@/types/database';
+
+// --- Kennel Hooks ---
+
+export function useKennels() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['kennels', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return kennelService.getAll(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useKennel(kennelId: string | undefined) {
+  return useQuery({
+    queryKey: ['kennels', kennelId],
+    queryFn: async () => {
+      if (!kennelId) return null;
+      return kennelService.getById(kennelId);
+    },
+    enabled: !!kennelId,
+  });
+}
+
+export function useAvailableKennels(size?: KennelSize) {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['kennels', 'available', facility?.id, size],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return kennelService.getAvailable(facility.id, size);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useCreateKennel() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+
+  return useMutation({
+    mutationFn: async (
+      data: Omit<Kennel, 'id' | 'created_at' | 'updated_at' | 'facility_id'>
+    ) => {
+      if (!facility?.id) throw new Error('No facility');
+      return kennelService.create({
+        ...data,
+        facility_id: facility.id,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kennels'] });
+    },
+  });
+}
+
+export function useUpdateKennel() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<Kennel>;
+    }) => {
+      return kennelService.update(id, data);
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['kennels'] });
+      queryClient.invalidateQueries({ queryKey: ['kennels', id] });
+    },
+  });
+}
+
+export function useUpdateKennelStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      status,
+    }: {
+      id: string;
+      status: KennelStatus;
+    }) => {
+      return kennelService.updateStatus(id, status);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kennels'] });
+    },
+  });
+}
+
+export function useDeleteKennel() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (kennelId: string) => {
+      return kennelService.delete(kennelId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kennels'] });
+    },
+  });
+}
+
+// --- Kennel QR Scan Hook ---
+
+export function useKennelQRScan(kennelId: string | undefined) {
+  return useQuery({
+    queryKey: ['kennel-qr-scan', kennelId],
+    queryFn: async () => {
+      if (!kennelId) return null;
+      return kennelService.getQRScanData(kennelId);
+    },
+    enabled: !!kennelId,
+  });
+}
+
+// --- Kennel Assignment Hooks ---
+
+export function useAssignDogToKennel() {
+  const queryClient = useQueryClient();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async ({
+      kennelId,
+      dogId,
+      stayId,
+      notes,
+    }: {
+      kennelId: string;
+      dogId: string;
+      stayId?: string;
+      notes?: string;
+    }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      return kennelAssignmentService.assign(kennelId, dogId, user.id, stayId, notes);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kennels'] });
+      queryClient.invalidateQueries({ queryKey: ['kennel-assignments'] });
+    },
+  });
+}
+
+export function useReleaseDogFromKennel() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (assignmentId: string) => {
+      return kennelAssignmentService.release(assignmentId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kennels'] });
+      queryClient.invalidateQueries({ queryKey: ['kennel-assignments'] });
+    },
+  });
+}
+
+export function useDogKennelAssignment(dogId: string | undefined) {
+  return useQuery({
+    queryKey: ['kennel-assignments', 'dog', dogId],
+    queryFn: async () => {
+      if (!dogId) return null;
+      return kennelAssignmentService.getByDog(dogId);
+    },
+    enabled: !!dogId,
+  });
+}
+
+export function useKennelHistory(kennelId: string | undefined) {
+  return useQuery({
+    queryKey: ['kennel-assignments', 'history', kennelId],
+    queryFn: async () => {
+      if (!kennelId) return [];
+      return kennelAssignmentService.getKennelHistory(kennelId);
+    },
+    enabled: !!kennelId,
+  });
+}
+
+// --- Kennel Activity Hooks ---
+
+export function useLogKennelActivity() {
+  const queryClient = useQueryClient();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async ({
+      kennelId,
+      activityType,
+      notes,
+      dogId,
+      assignmentId,
+    }: {
+      kennelId: string;
+      activityType: string;
+      notes?: string;
+      dogId?: string;
+      assignmentId?: string;
+    }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      return kennelActivityService.log(kennelId, activityType, user.id, notes, dogId, assignmentId);
+    },
+    onSuccess: (_, { kennelId }) => {
+      queryClient.invalidateQueries({ queryKey: ['kennel-activity', kennelId] });
+      queryClient.invalidateQueries({ queryKey: ['kennel-qr-scan', kennelId] });
+    },
+  });
+}
+
+export function useKennelActivityLogs(kennelId: string | undefined) {
+  return useQuery({
+    queryKey: ['kennel-activity', kennelId],
+    queryFn: async () => {
+      if (!kennelId) return [];
+      return kennelActivityService.getByKennel(kennelId);
+    },
+    enabled: !!kennelId,
+  });
+}
+
+export function useDogKennelActivityLogs(dogId: string | undefined) {
+  return useQuery({
+    queryKey: ['kennel-activity', 'dog', dogId],
+    queryFn: async () => {
+      if (!dogId) return [];
+      return kennelActivityService.getByDog(dogId);
+    },
+    enabled: !!dogId,
+  });
+}
+
+export function useTodayKennelActivityLogs() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['kennel-activity', 'today', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return kennelActivityService.getTodayLogs(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+    refetchInterval: 60000, // Refresh every minute
+  });
+}

@@ -76,6 +76,7 @@ import {
   Rocket,
   Activity,
   CircleDashed,
+  X,
 } from 'lucide-react';
 
 // Tier colors for styling
@@ -1316,10 +1317,21 @@ const stats = {
   activeDogs: 18,
 };
 
+// Badge detail type
+interface BadgeDetail {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  icon: string;
+  tiers: BadgeTier[];
+}
+
 export default function BadgesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isAwardModalOpen, setIsAwardModalOpen] = useState(false);
+  const [selectedBadge, setSelectedBadge] = useState<BadgeDetail | null>(null);
 
   const categories = ['all', 'obedience', 'leash', 'social', 'behavior', 'certification', 'tricks', 'competition', 'milestone', 'streak', 'special', 'family', 'trainer', 'fitness', 'environment', 'fun'];
 
@@ -1552,7 +1564,8 @@ export default function BadgesPage() {
             {filteredBadges.map((badge) => (
               <div
                 key={badge.id}
-                className="p-4 rounded-xl bg-gradient-to-br from-surface-800/90 to-surface-900/95 border border-white/[0.06] hover:border-white/10 transition-all"
+                onClick={() => setSelectedBadge(badge)}
+                className="p-4 rounded-xl bg-gradient-to-br from-surface-800/90 to-surface-900/95 border border-white/[0.06] hover:border-white/10 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
               >
                 <div className="flex items-start gap-3 mb-3">
                   <div
@@ -1583,6 +1596,110 @@ export default function BadgesPage() {
           console.log('Badge awarded successfully');
         }}
       />
+
+      {/* Badge Detail Modal */}
+      {selectedBadge && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            onClick={() => setSelectedBadge(null)}
+          />
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="bg-surface-900 border border-surface-700 rounded-2xl shadow-2xl max-w-lg w-full animate-scale-in">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-4 border-b border-surface-700">
+                <h2 className="text-lg font-semibold text-white">{selectedBadge.name}</h2>
+                <button
+                  onClick={() => setSelectedBadge(null)}
+                  className="text-surface-400 hover:text-white transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6">
+                {/* Badge Icon */}
+                <div className="flex justify-center mb-6">
+                  <div
+                    className="w-24 h-24 rounded-full flex items-center justify-center"
+                    style={{
+                      background: 'linear-gradient(145deg, rgba(107,114,128,0.2), rgba(107,114,128,0.08))',
+                      boxShadow: '0 0 30px rgba(107,114,128,0.3)',
+                    }}
+                  >
+                    {badgeIcons[selectedBadge.icon]?.('#9ca3af', 48) || <Award size={48} className="text-surface-400" />}
+                  </div>
+                </div>
+
+                {/* Description */}
+                <p className="text-center text-surface-400 mb-6">{selectedBadge.description}</p>
+
+                {/* Category */}
+                <div className="flex justify-center mb-6">
+                  <span className="px-3 py-1 rounded-full bg-surface-800 text-surface-300 text-sm capitalize">
+                    {selectedBadge.category}
+                  </span>
+                </div>
+
+                {/* Tier Breakdown */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider mb-4">Available Tiers</h3>
+                  {selectedBadge.tiers.map((tier) => (
+                    <div
+                      key={tier}
+                      className="flex items-center gap-4 p-3 rounded-xl"
+                      style={{
+                        background: `linear-gradient(135deg, ${tierColors[tier]}15, ${tierColors[tier]}05)`,
+                        border: `1px solid ${tierColors[tier]}30`,
+                      }}
+                    >
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center"
+                        style={{
+                          background: `linear-gradient(145deg, ${tierColors[tier]}33, ${tierColors[tier]}1a)`,
+                          boxShadow: `0 0 12px ${tierColors[tier]}40`,
+                        }}
+                      >
+                        {badgeIcons[selectedBadge.icon]?.(tierColors[tier], 20) || <Award size={20} />}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium capitalize" style={{ color: tierColors[tier] }}>
+                          {tier}
+                        </p>
+                        <p className="text-xs text-surface-500">
+                          {tier === 'bronze' && 'Beginning level - First steps in mastering this skill'}
+                          {tier === 'silver' && 'Intermediate level - Building solid foundations'}
+                          {tier === 'gold' && 'Advanced level - Demonstrating strong proficiency'}
+                          {tier === 'platinum' && 'Expert level - Exceptional mastery achieved'}
+                          {tier === 'diamond' && 'Master level - Legendary achievement unlocked'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex justify-end gap-3 p-4 border-t border-surface-700">
+                <Button variant="outline" onClick={() => setSelectedBadge(null)}>
+                  Close
+                </Button>
+                <Button
+                  variant="primary"
+                  className="bg-amber-500 hover:bg-amber-400"
+                  onClick={() => {
+                    setSelectedBadge(null);
+                    setIsAwardModalOpen(true);
+                  }}
+                >
+                  Award This Badge
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Mobile FAB */}
       <button

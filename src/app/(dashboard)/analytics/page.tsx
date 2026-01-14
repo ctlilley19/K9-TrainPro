@@ -31,55 +31,112 @@ import {
   Loader2,
 } from 'lucide-react';
 
-// Chart data (would come from analytics service in production)
-const chartData = {
-  activityByDay: [
-    { day: 'Mon', training: 24, play: 18, potty: 45, feeding: 48 },
-    { day: 'Tue', training: 28, play: 22, potty: 48, feeding: 48 },
-    { day: 'Wed', training: 32, play: 20, potty: 46, feeding: 48 },
-    { day: 'Thu', training: 26, play: 24, potty: 44, feeding: 48 },
-    { day: 'Fri', training: 30, play: 26, potty: 50, feeding: 48 },
-    { day: 'Sat', training: 18, play: 30, potty: 42, feeding: 48 },
-    { day: 'Sun', training: 12, play: 28, potty: 40, feeding: 48 },
-  ],
-  programDistribution: [
-    { name: 'Board & Train', value: 8, color: '#6366f1' },
-    { name: 'Day Training', value: 6, color: '#22c55e' },
-    { name: 'Private Lessons', value: 4, color: '#f59e0b' },
-  ],
-  trainingProgress: [
-    { week: 'Week 1', avgProgress: 15 },
-    { week: 'Week 2', avgProgress: 32 },
-    { week: 'Week 3', avgProgress: 48 },
-    { week: 'Week 4', avgProgress: 65 },
-    { week: 'Week 5', avgProgress: 78 },
-    { week: 'Week 6', avgProgress: 92 },
-  ],
-  badgesByTier: [
-    { tier: 'Bronze', count: 22, color: '#d97706' },
-    { tier: 'Silver', count: 15, color: '#9ca3af' },
-    { tier: 'Gold', count: 6, color: '#eab308' },
-    { tier: 'Platinum', count: 2, color: '#22d3ee' },
-  ],
-  revenueByMonth: [
-    { month: 'Aug', revenue: 18500 },
-    { month: 'Sep', revenue: 21000 },
-    { month: 'Oct', revenue: 24500 },
-    { month: 'Nov', revenue: 26000 },
-    { month: 'Dec', revenue: 25000 },
-    { month: 'Jan', revenue: 28500 },
-  ],
-  topTrainers: [
-    { name: 'Sarah Johnson', dogs: 8, hours: 62, badges: 18 },
-    { name: 'John Smith', dogs: 6, hours: 48, badges: 14 },
-    { name: 'Mike Wilson', dogs: 5, hours: 38, badges: 10 },
-  ],
-  recentActivity: [
-    { time: '10:30 AM', dog: 'Max', activity: 'Earned Gold Badge', trainer: 'Sarah' },
-    { time: '9:45 AM', dog: 'Bella', activity: 'Training Session', trainer: 'John' },
-    { time: '9:00 AM', dog: 'Luna', activity: 'Morning Walk', trainer: 'Mike' },
-    { time: '8:30 AM', dog: 'Charlie', activity: 'Feeding', trainer: 'Sarah' },
-  ],
+// Chart data by time range - simulates filtered data from analytics service
+const getChartDataByTimeRange = (range: TimeRange) => {
+  // Multiplier based on time range to simulate different data volumes
+  const multipliers: Record<TimeRange, number> = {
+    '7d': 1,
+    '30d': 4,
+    '90d': 12,
+    'ytd': 20,
+  };
+  const m = multipliers[range];
+
+  return {
+    activityByDay: range === '7d' ? [
+      { day: 'Mon', training: 24, play: 18, potty: 45, feeding: 48 },
+      { day: 'Tue', training: 28, play: 22, potty: 48, feeding: 48 },
+      { day: 'Wed', training: 32, play: 20, potty: 46, feeding: 48 },
+      { day: 'Thu', training: 26, play: 24, potty: 44, feeding: 48 },
+      { day: 'Fri', training: 30, play: 26, potty: 50, feeding: 48 },
+      { day: 'Sat', training: 18, play: 30, potty: 42, feeding: 48 },
+      { day: 'Sun', training: 12, play: 28, potty: 40, feeding: 48 },
+    ] : range === '30d' ? [
+      { day: 'Week 1', training: 95, play: 72, potty: 180, feeding: 192 },
+      { day: 'Week 2', training: 108, play: 85, potty: 195, feeding: 192 },
+      { day: 'Week 3', training: 115, play: 90, potty: 188, feeding: 192 },
+      { day: 'Week 4', training: 102, play: 78, potty: 175, feeding: 192 },
+    ] : range === '90d' ? [
+      { day: 'Jan', training: 320, play: 240, potty: 560, feeding: 576 },
+      { day: 'Feb', training: 350, play: 280, potty: 590, feeding: 576 },
+      { day: 'Mar', training: 380, play: 310, potty: 620, feeding: 576 },
+    ] : [
+      { day: 'Q1', training: 850, play: 680, potty: 1400, feeding: 1440 },
+      { day: 'Q2', training: 920, play: 740, potty: 1500, feeding: 1440 },
+      { day: 'Q3', training: 980, play: 800, potty: 1580, feeding: 1440 },
+      { day: 'Q4', training: 1050, play: 860, potty: 1650, feeding: 1440 },
+    ],
+    programDistribution: [
+      { name: 'Board & Train', value: Math.round(8 * m / 4), color: '#6366f1' },
+      { name: 'Day Training', value: Math.round(6 * m / 4), color: '#22c55e' },
+      { name: 'Private Lessons', value: Math.round(4 * m / 4), color: '#f59e0b' },
+    ],
+    trainingProgress: range === '7d' ? [
+      { week: 'Day 1', avgProgress: 5 },
+      { week: 'Day 2', avgProgress: 12 },
+      { week: 'Day 3', avgProgress: 18 },
+      { week: 'Day 4', avgProgress: 25 },
+      { week: 'Day 5', avgProgress: 32 },
+      { week: 'Day 6', avgProgress: 38 },
+      { week: 'Day 7', avgProgress: 45 },
+    ] : range === '30d' ? [
+      { week: 'Week 1', avgProgress: 15 },
+      { week: 'Week 2', avgProgress: 32 },
+      { week: 'Week 3', avgProgress: 48 },
+      { week: 'Week 4', avgProgress: 65 },
+    ] : range === '90d' ? [
+      { week: 'Month 1', avgProgress: 35 },
+      { week: 'Month 2', avgProgress: 62 },
+      { week: 'Month 3', avgProgress: 88 },
+    ] : [
+      { week: 'Q1', avgProgress: 25 },
+      { week: 'Q2', avgProgress: 48 },
+      { week: 'Q3', avgProgress: 72 },
+      { week: 'Q4', avgProgress: 92 },
+    ],
+    badgesByTier: [
+      { tier: 'Bronze', count: Math.round(22 * m / 4), color: '#d97706' },
+      { tier: 'Silver', count: Math.round(15 * m / 4), color: '#9ca3af' },
+      { tier: 'Gold', count: Math.round(6 * m / 4), color: '#eab308' },
+      { tier: 'Platinum', count: Math.round(2 * m / 4), color: '#22d3ee' },
+    ],
+    revenueByMonth: range === '7d' ? [
+      { month: 'Mon', revenue: 4200 },
+      { month: 'Tue', revenue: 4800 },
+      { month: 'Wed', revenue: 5100 },
+      { month: 'Thu', revenue: 4600 },
+      { month: 'Fri', revenue: 5500 },
+      { month: 'Sat', revenue: 3200 },
+      { month: 'Sun', revenue: 2100 },
+    ] : range === '30d' ? [
+      { month: 'Week 1', revenue: 6800 },
+      { month: 'Week 2', revenue: 7200 },
+      { month: 'Week 3', revenue: 7800 },
+      { month: 'Week 4', revenue: 6700 },
+    ] : range === '90d' ? [
+      { month: 'Jan', revenue: 28500 },
+      { month: 'Feb', revenue: 26800 },
+      { month: 'Mar', revenue: 31200 },
+    ] : [
+      { month: 'Aug', revenue: 18500 },
+      { month: 'Sep', revenue: 21000 },
+      { month: 'Oct', revenue: 24500 },
+      { month: 'Nov', revenue: 26000 },
+      { month: 'Dec', revenue: 25000 },
+      { month: 'Jan', revenue: 28500 },
+    ],
+    topTrainers: [
+      { name: 'Sarah Johnson', dogs: Math.round(8 * m / 4), hours: Math.round(62 * m / 4), badges: Math.round(18 * m / 4) },
+      { name: 'John Smith', dogs: Math.round(6 * m / 4), hours: Math.round(48 * m / 4), badges: Math.round(14 * m / 4) },
+      { name: 'Mike Wilson', dogs: Math.round(5 * m / 4), hours: Math.round(38 * m / 4), badges: Math.round(10 * m / 4) },
+    ],
+    recentActivity: [
+      { time: '10:30 AM', dog: 'Max', activity: 'Earned Gold Badge', trainer: 'Sarah' },
+      { time: '9:45 AM', dog: 'Bella', activity: 'Training Session', trainer: 'John' },
+      { time: '9:00 AM', dog: 'Luna', activity: 'Morning Walk', trainer: 'Mike' },
+      { time: '8:30 AM', dog: 'Charlie', activity: 'Feeding', trainer: 'Sarah' },
+    ],
+  };
 };
 
 type TimeRange = '7d' | '30d' | '90d' | 'ytd';
@@ -88,6 +145,9 @@ export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
   const { data: stats, isLoading } = useDashboardStats();
   const { data: trainingBoard } = useTrainingBoard();
+
+  // Get chart data based on selected time range
+  const chartData = getChartDataByTimeRange(timeRange);
 
   // Calculate dogs in facility from training board
   const dogsInFacility = trainingBoard
