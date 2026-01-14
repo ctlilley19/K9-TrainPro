@@ -20,6 +20,9 @@ import {
   ClipboardList,
   BarChart3,
   Home,
+  UserCog,
+  Briefcase,
+  Target,
 } from 'lucide-react';
 
 interface NavItem {
@@ -75,6 +78,28 @@ const navItems: NavItem[] = [
   },
 ];
 
+// Manager section - only visible to owners and admins
+const managerNavItems: NavItem[] = [
+  {
+    label: 'Manager',
+    href: '/manager',
+    icon: <Briefcase size={20} />,
+    roles: ['owner', 'admin'],
+  },
+  {
+    label: 'Trainers',
+    href: '/manager/trainers',
+    icon: <UserCog size={20} />,
+    roles: ['owner', 'admin'],
+  },
+  {
+    label: 'Assignments',
+    href: '/manager/assignments',
+    icon: <Target size={20} />,
+    roles: ['owner', 'admin'],
+  },
+];
+
 const bottomNavItems: NavItem[] = [
   {
     label: 'Settings',
@@ -92,6 +117,12 @@ export function Sidebar() {
   const filteredNavItems = navItems.filter(
     (item) => !item.roles || (userRole && item.roles.includes(userRole))
   );
+
+  const filteredManagerItems = managerNavItems.filter(
+    (item) => !item.roles || (userRole && item.roles.includes(userRole))
+  );
+
+  const showManagerSection = filteredManagerItems.length > 0;
 
   return (
     <aside
@@ -141,6 +172,44 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {/* Manager Section */}
+        {showManagerSection && (
+          <>
+            <div className="pt-4 pb-2">
+              {!isCollapsed && (
+                <p className="px-3 text-xs font-semibold text-surface-500 uppercase tracking-wider">
+                  Management
+                </p>
+              )}
+              {isCollapsed && <div className="border-t border-surface-700 mx-2" />}
+            </div>
+            {filteredManagerItems.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
+                    'hover:bg-surface-800',
+                    isActive
+                      ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                      : 'text-surface-400 hover:text-white',
+                    isCollapsed && 'justify-center'
+                  )}
+                  title={isCollapsed ? item.label : undefined}
+                >
+                  <span className={cn(isActive && 'text-purple-400')}>{item.icon}</span>
+                  {!isCollapsed && (
+                    <span className="font-medium text-sm">{item.label}</span>
+                  )}
+                </Link>
+              );
+            })}
+          </>
+        )}
       </nav>
 
       {/* Bottom Section */}
