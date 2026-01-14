@@ -6,9 +6,34 @@ import { dogsService } from '@/services/supabase/dogs';
 import { programsService } from '@/services/supabase/programs';
 import { familiesService } from '@/services/supabase/families';
 import { badgesService } from '@/services/supabase/badges';
+import {
+  statusFeedService,
+  feedReactionsService,
+  feedCommentsService,
+} from '@/services/supabase/feed';
+import {
+  facilityConfigService,
+  configToFeatureFlags,
+} from '@/services/supabase/config';
 import { useFacility, useUser } from '@/stores/authStore';
 import { isDemoMode } from '@/lib/supabase';
-import type { ActivityType, Dog, Program, Family, Badge, ActivityWithDetails, ProgramWithDog, DogWithFamily, User } from '@/types/database';
+import type {
+  ActivityType,
+  Dog,
+  Program,
+  Family,
+  Badge,
+  ActivityWithDetails,
+  ProgramWithDog,
+  DogWithFamily,
+  User,
+  StatusFeedItem,
+  StatusUpdateType,
+  DogMood,
+  FacilityConfig,
+  BusinessMode,
+  FeatureFlags,
+} from '@/types/database';
 
 // ============================================================================
 // DEMO DATA
@@ -718,6 +743,60 @@ export function useFamily(familyId: string | undefined) {
       return familiesService.getById(familyId);
     },
     enabled: !!familyId,
+  });
+}
+
+interface CreateFamilyInput {
+  name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  vet_name?: string;
+  vet_phone?: string;
+  notes?: string;
+}
+
+export function useCreateFamily() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+
+  return useMutation({
+    mutationFn: async (data: CreateFamilyInput) => {
+      if (isDemoMode()) {
+        const newFamily: Family = {
+          id: crypto.randomUUID(),
+          facility_id: 'demo-facility-id',
+          primary_contact_id: null,
+          name: data.name,
+          phone: data.phone || null,
+          email: data.email || null,
+          address: data.address || null,
+          city: data.city || null,
+          state: data.state || null,
+          zip: data.zip || null,
+          emergency_contact_name: data.emergency_contact_name || null,
+          emergency_contact_phone: data.emergency_contact_phone || null,
+          vet_name: data.vet_name || null,
+          vet_phone: data.vet_phone || null,
+          vet_address: null,
+          notes: data.notes || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        demoFamilies.push(newFamily);
+        return newFamily;
+      }
+      if (!facility?.id) throw new Error('No facility ID');
+      return familiesService.create({ ...data, facility_id: facility.id });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['families', facility?.id] });
+    },
   });
 }
 
@@ -1524,5 +1603,2495 @@ export function usePetParentAchievements() {
       return demoPetParentAchievements;
     },
     enabled: !!user?.id || isDemoMode(),
+  });
+}
+
+// ============================================================================
+// HOMEWORK HOOKS
+// ============================================================================
+
+import {
+  homeworkService,
+  homeworkTemplatesService,
+  homeworkAssignmentsService,
+  homeworkSubmissionsService,
+  type CreateTemplateData,
+  type UpdateTemplateData,
+  type CreateAssignmentData,
+  type UpdateAssignmentData,
+  type CreateSubmissionData,
+  type TemplateFilters,
+  type AssignmentFilters,
+} from '@/services/supabase/homework';
+import type {
+  HomeworkTemplate,
+  HomeworkAssignment,
+  HomeworkSubmission,
+  HomeworkAssignmentWithDetails,
+  SubmissionStatus,
+} from '@/types/database';
+
+// --- Template Hooks ---
+
+export function useHomeworkTemplates(filters?: TemplateFilters) {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['homework-templates', facility?.id, filters],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return homeworkTemplatesService.getAll(facility.id, filters);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useHomeworkTemplate(templateId: string | undefined) {
+  return useQuery({
+    queryKey: ['homework-templates', templateId],
+    queryFn: async () => {
+      if (!templateId) return null;
+      return homeworkTemplatesService.getById(templateId);
+    },
+    enabled: !!templateId,
+  });
+}
+
+export function useCreateHomeworkTemplate() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async (data: Omit<CreateTemplateData, 'facility_id' | 'created_by'>) => {
+      if (!facility?.id || !user?.id) throw new Error('Not authenticated');
+      return homeworkTemplatesService.create({
+        ...data,
+        facility_id: facility.id,
+        created_by: user.id,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['homework-templates', facility?.id] });
+    },
+  });
+}
+
+export function useUpdateHomeworkTemplate() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: UpdateTemplateData }) => {
+      return homeworkTemplatesService.update(id, data);
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['homework-templates', facility?.id] });
+      queryClient.invalidateQueries({ queryKey: ['homework-templates', id] });
+    },
+  });
+}
+
+export function useDeleteHomeworkTemplate() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return homeworkTemplatesService.delete(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['homework-templates', facility?.id] });
+    },
+  });
+}
+
+// --- Assignment Hooks ---
+
+export function useHomeworkAssignments(filters?: AssignmentFilters) {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['homework-assignments', facility?.id, filters],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return homeworkAssignmentsService.getAll(facility.id, filters);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useHomeworkAssignment(assignmentId: string | undefined) {
+  return useQuery({
+    queryKey: ['homework-assignments', assignmentId],
+    queryFn: async () => {
+      if (!assignmentId) return null;
+      return homeworkAssignmentsService.getById(assignmentId);
+    },
+    enabled: !!assignmentId,
+  });
+}
+
+export function useDogHomework(dogId: string | undefined) {
+  return useQuery({
+    queryKey: ['homework-assignments', 'dog', dogId],
+    queryFn: async () => {
+      if (!dogId) return [];
+      return homeworkAssignmentsService.getByDog(dogId);
+    },
+    enabled: !!dogId,
+  });
+}
+
+export function useOverdueHomework() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['homework-assignments', 'overdue', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return homeworkAssignmentsService.getOverdue(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useCreateHomeworkAssignment() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async (data: Omit<CreateAssignmentData, 'facility_id' | 'assigned_by'>) => {
+      if (!facility?.id || !user?.id) throw new Error('Not authenticated');
+      return homeworkAssignmentsService.create({
+        ...data,
+        facility_id: facility.id,
+        assigned_by: user.id,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['homework-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['homework-stats'] });
+    },
+  });
+}
+
+export function useCreateHomeworkFromTemplate() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async ({
+      templateId,
+      dogId,
+      dueDate,
+      programId,
+      customNotes,
+    }: {
+      templateId: string;
+      dogId: string;
+      dueDate: string;
+      programId?: string;
+      customNotes?: string;
+    }) => {
+      if (!facility?.id || !user?.id) throw new Error('Not authenticated');
+      return homeworkAssignmentsService.createFromTemplate(
+        templateId,
+        dogId,
+        dueDate,
+        user.id,
+        facility.id,
+        programId,
+        customNotes
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['homework-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['homework-templates'] });
+      queryClient.invalidateQueries({ queryKey: ['homework-stats'] });
+    },
+  });
+}
+
+export function useUpdateHomeworkAssignment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: UpdateAssignmentData }) => {
+      return homeworkAssignmentsService.update(id, data);
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['homework-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['homework-stats'] });
+    },
+  });
+}
+
+export function useCompleteHomeworkAssignment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return homeworkAssignmentsService.complete(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['homework-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['homework-stats'] });
+    },
+  });
+}
+
+export function useDeleteHomeworkAssignment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return homeworkAssignmentsService.delete(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['homework-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['homework-stats'] });
+    },
+  });
+}
+
+// --- Submission Hooks ---
+
+export function useHomeworkSubmissions(assignmentId: string | undefined) {
+  return useQuery({
+    queryKey: ['homework-submissions', assignmentId],
+    queryFn: async () => {
+      if (!assignmentId) return [];
+      return homeworkSubmissionsService.getByAssignment(assignmentId);
+    },
+    enabled: !!assignmentId,
+  });
+}
+
+export function usePendingHomeworkReviews() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['homework-submissions', 'pending', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return homeworkSubmissionsService.getPendingReview(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useCreateHomeworkSubmission() {
+  const queryClient = useQueryClient();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async (data: Omit<CreateSubmissionData, 'submitted_by'>) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      return homeworkSubmissionsService.create({
+        ...data,
+        submitted_by: user.id,
+      });
+    },
+    onSuccess: (_, data) => {
+      queryClient.invalidateQueries({ queryKey: ['homework-submissions', data.assignment_id] });
+      queryClient.invalidateQueries({ queryKey: ['homework-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['homework-stats'] });
+    },
+  });
+}
+
+export function useReviewHomeworkSubmission() {
+  const queryClient = useQueryClient();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      feedback,
+      status,
+      rating,
+    }: {
+      id: string;
+      feedback: string;
+      status: SubmissionStatus;
+      rating?: number;
+    }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      return homeworkSubmissionsService.review(id, feedback, status, user.id, rating);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['homework-submissions'] });
+      queryClient.invalidateQueries({ queryKey: ['homework-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['homework-stats'] });
+    },
+  });
+}
+
+export function useApproveHomeworkSubmission() {
+  const queryClient = useQueryClient();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      feedback,
+      rating,
+    }: {
+      id: string;
+      feedback?: string;
+      rating?: number;
+    }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      return homeworkSubmissionsService.approve(id, user.id, feedback, rating);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['homework-submissions'] });
+      queryClient.invalidateQueries({ queryKey: ['homework-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['homework-stats'] });
+    },
+  });
+}
+
+// --- Stats Hook ---
+
+export function useHomeworkDashboardStats() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['homework-stats', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return null;
+      return homeworkService.getDashboardStats(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+// --- Pet Parent Homework Hooks ---
+
+export function usePetParentHomework() {
+  const user = useUser();
+
+  return useQuery({
+    queryKey: ['pet-parent-homework', user?.id],
+    queryFn: async () => {
+      if (isDemoMode() || !user?.id) {
+        // Return demo homework data for pet parent
+        return [
+          {
+            id: 'hw-1',
+            title: 'Basic Sit Practice',
+            description: 'Practice sit command with your dog daily',
+            instructions: 'Follow the video demonstration to practice sit with your dog for 10 minutes.',
+            dog: { id: 'a', name: 'Max', breed: 'German Shepherd' },
+            due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            status: 'assigned',
+            difficulty: 'beginner',
+            video_url: 'https://example.com/sit-demo.mp4',
+            assigned_by: { name: 'Sarah Johnson' },
+            submissions: [],
+          },
+          {
+            id: 'hw-2',
+            title: 'Leash Walking Practice',
+            description: 'Work on loose leash walking',
+            instructions: 'Walk for 15 minutes focusing on keeping the leash loose.',
+            dog: { id: 'a', name: 'Max', breed: 'German Shepherd' },
+            due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            status: 'in_progress',
+            difficulty: 'intermediate',
+            video_url: null,
+            assigned_by: { name: 'Sarah Johnson' },
+            submissions: [
+              {
+                id: 'sub-1',
+                notes: 'We practiced today, Max did great!',
+                status: 'approved',
+                trainer_feedback: 'Excellent work! Keep it up.',
+                created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+              },
+            ],
+          },
+          {
+            id: 'hw-3',
+            title: 'Recall Foundation',
+            description: 'Build a reliable recall',
+            instructions: 'Practice recall in a fenced area or on a long line.',
+            dog: { id: 'b', name: 'Bella', breed: 'Golden Retriever' },
+            due_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            status: 'assigned',
+            difficulty: 'beginner',
+            video_url: null,
+            assigned_by: { name: 'John Smith' },
+            submissions: [],
+          },
+        ];
+      }
+      // In production, fetch homework for parent's dogs
+      return [];
+    },
+    enabled: !!user?.id || isDemoMode(),
+  });
+}
+
+export function usePetParentHomeworkDetail(assignmentId: string | undefined) {
+  return useQuery({
+    queryKey: ['pet-parent-homework', assignmentId],
+    queryFn: async () => {
+      if (!assignmentId) return null;
+      if (isDemoMode()) {
+        // Return demo detail
+        return {
+          id: assignmentId,
+          title: 'Basic Sit Practice',
+          description: 'Practice sit command with your dog daily',
+          instructions: '1. Start in a quiet room\n2. Hold treat above nose\n3. Say "Sit" once\n4. Reward immediately when they sit\n5. Repeat 10 times',
+          tips: 'Keep sessions short and fun! Always end on a positive note.',
+          dog: { id: 'a', name: 'Max', breed: 'German Shepherd', photo_url: null },
+          due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          status: 'assigned',
+          difficulty: 'beginner',
+          video_url: 'https://example.com/sit-demo.mp4',
+          assigned_by: { name: 'Sarah Johnson', avatar_url: null },
+          assigned_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          custom_notes: 'Focus on duration - Max can sit but breaks quickly after a few seconds.',
+          repetitions_required: 3,
+          submissions: [],
+        };
+      }
+      return homeworkAssignmentsService.getById(assignmentId);
+    },
+    enabled: !!assignmentId,
+  });
+}
+
+// ============================================================================
+// MESSAGING HOOKS
+// ============================================================================
+
+import {
+  conversationsService,
+  messagesService,
+  messageTemplatesService,
+} from '@/services/supabase/messaging';
+import type {
+  Conversation,
+  Message,
+  MessageTemplate,
+  ConversationWithDetails,
+  MessageWithSender,
+  MessageSenderType,
+  MessageType,
+} from '@/types/database';
+
+// --- Conversations Hooks ---
+
+export function useConversations(options?: {
+  isArchived?: boolean;
+  isPinned?: boolean;
+  search?: string;
+}) {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['conversations', facility?.id, options],
+    queryFn: async () => {
+      return conversationsService.getAll(options);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function usePetParentConversations() {
+  const user = useUser();
+
+  return useQuery({
+    queryKey: ['pet-parent-conversations', user?.id],
+    queryFn: async () => {
+      // In demo mode or production, use family ID
+      // For demo, assume family-1
+      return conversationsService.getForFamily('family-1');
+    },
+    enabled: !!user?.id || isDemoMode(),
+  });
+}
+
+export function useConversation(conversationId: string | undefined) {
+  return useQuery({
+    queryKey: ['conversations', conversationId],
+    queryFn: async () => {
+      if (!conversationId) return null;
+      return conversationsService.getById(conversationId);
+    },
+    enabled: !!conversationId,
+  });
+}
+
+export function useCreateConversation() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+
+  return useMutation({
+    mutationFn: async (data: {
+      family_id: string;
+      dog_id?: string;
+      title?: string;
+    }) => {
+      if (!facility?.id) throw new Error('No facility');
+      return conversationsService.create({
+        facility_id: facility.id,
+        ...data,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+}
+
+export function useUpdateConversation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<Pick<Conversation, 'is_archived' | 'is_pinned' | 'title'>>;
+    }) => {
+      return conversationsService.update(id, data);
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations', id] });
+    },
+  });
+}
+
+export function useUnreadMessageCount() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['messages', 'unread-count', facility?.id],
+    queryFn: async () => {
+      return conversationsService.getUnreadCount();
+    },
+    enabled: !!facility?.id || isDemoMode(),
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+}
+
+export function usePetParentUnreadCount() {
+  const user = useUser();
+
+  return useQuery({
+    queryKey: ['messages', 'unread-count-parent', user?.id],
+    queryFn: async () => {
+      // For demo, assume family-1
+      return conversationsService.getUnreadCountForFamily('family-1');
+    },
+    enabled: !!user?.id || isDemoMode(),
+    refetchInterval: 30000,
+  });
+}
+
+// --- Messages Hooks ---
+
+export function useMessages(
+  conversationId: string | undefined,
+  options?: { limit?: number; offset?: number }
+) {
+  return useQuery({
+    queryKey: ['messages', conversationId, options],
+    queryFn: async () => {
+      if (!conversationId) return [];
+      return messagesService.getForConversation(conversationId, options);
+    },
+    enabled: !!conversationId,
+  });
+}
+
+export function useSendMessage() {
+  const queryClient = useQueryClient();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async (data: {
+      conversation_id: string;
+      content: string;
+      sender_type: MessageSenderType;
+      message_type?: MessageType;
+      media_url?: string;
+      reply_to_id?: string;
+    }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      return messagesService.send({
+        ...data,
+        sender_id: user.id,
+      });
+    },
+    onSuccess: (_, { conversation_id }) => {
+      queryClient.invalidateQueries({ queryKey: ['messages', conversation_id] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+}
+
+export function useMarkMessagesAsRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      conversationId,
+      readerType,
+    }: {
+      conversationId: string;
+      readerType: 'trainer' | 'parent';
+    }) => {
+      return messagesService.markAsRead(conversationId, readerType);
+    },
+    onSuccess: (_, { conversationId }) => {
+      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['messages', 'unread-count'] });
+    },
+  });
+}
+
+export function useEditMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, content }: { id: string; content: string }) => {
+      return messagesService.edit(id, content);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['messages'] });
+    },
+  });
+}
+
+export function useDeleteMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return messagesService.delete(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['messages'] });
+    },
+  });
+}
+
+export function useAddReaction() {
+  const queryClient = useQueryClient();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async ({
+      messageId,
+      reaction,
+    }: {
+      messageId: string;
+      reaction: string;
+    }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      return messagesService.addReaction(messageId, user.id, reaction);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['messages'] });
+    },
+  });
+}
+
+export function useRemoveReaction() {
+  const queryClient = useQueryClient();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async ({
+      messageId,
+      reaction,
+    }: {
+      messageId: string;
+      reaction: string;
+    }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      return messagesService.removeReaction(messageId, user.id, reaction);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['messages'] });
+    },
+  });
+}
+
+// --- Message Templates Hooks ---
+
+export function useMessageTemplates(options?: { category?: string; isActive?: boolean }) {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['message-templates', facility?.id, options],
+    queryFn: async () => {
+      return messageTemplatesService.getAll(options);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useCreateMessageTemplate() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async (data: {
+      title: string;
+      content: string;
+      category?: string;
+    }) => {
+      if (!facility?.id) throw new Error('No facility');
+      return messageTemplatesService.create({
+        facility_id: facility.id,
+        created_by: user?.id,
+        ...data,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['message-templates'] });
+    },
+  });
+}
+
+export function useUpdateMessageTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<Pick<MessageTemplate, 'title' | 'content' | 'category' | 'is_active'>>;
+    }) => {
+      return messageTemplatesService.update(id, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['message-templates'] });
+    },
+  });
+}
+
+export function useDeleteMessageTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return messageTemplatesService.delete(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['message-templates'] });
+    },
+  });
+}
+
+// ============================================================================
+// CALENDAR HOOKS
+// ============================================================================
+
+import {
+  calendarService,
+  staysService,
+  appointmentsService,
+  blocksService,
+  scheduleTemplatesService,
+  dailyLogsService,
+} from '@/services/supabase/calendar';
+import type {
+  BoardTrainStay,
+  BoardTrainStayWithDetails,
+  CalendarAppointment,
+  CalendarAppointmentWithDetails,
+  CalendarBlock,
+  TrainingScheduleTemplate,
+  StayDailyLog,
+  CalendarEvent,
+  StayStatus,
+  AppointmentType,
+} from '@/types/database';
+
+// --- Board & Train Stays Hooks ---
+
+export function useBoardTrainStays(options?: {
+  status?: StayStatus;
+  dateRange?: { start: string; end: string };
+}) {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['board-train-stays', facility?.id, options],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      if (options?.dateRange) {
+        return staysService.getByDateRange(
+          facility.id,
+          options.dateRange.start,
+          options.dateRange.end
+        );
+      }
+      return staysService.getAll(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useActiveStays() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['board-train-stays', 'active', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return staysService.getActive(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useUpcomingStays() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['board-train-stays', 'upcoming', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return staysService.getUpcoming(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useBoardTrainStay(stayId: string | undefined) {
+  return useQuery({
+    queryKey: ['board-train-stays', stayId],
+    queryFn: async () => {
+      if (!stayId) return null;
+      return staysService.getById(stayId);
+    },
+    enabled: !!stayId,
+  });
+}
+
+export function useCreateStay() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async (
+      data: Omit<BoardTrainStay, 'id' | 'created_at' | 'updated_at' | 'facility_id' | 'created_by'>
+    ) => {
+      if (!facility?.id) throw new Error('No facility');
+      return staysService.create({
+        ...data,
+        facility_id: facility.id,
+        created_by: user?.id || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['board-train-stays'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+    },
+  });
+}
+
+export function useUpdateStay() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<BoardTrainStay>;
+    }) => {
+      return staysService.update(id, data);
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['board-train-stays'] });
+      queryClient.invalidateQueries({ queryKey: ['board-train-stays', id] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+    },
+  });
+}
+
+export function useCheckInStay() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (stayId: string) => {
+      return staysService.checkIn(stayId);
+    },
+    onSuccess: (_, stayId) => {
+      queryClient.invalidateQueries({ queryKey: ['board-train-stays'] });
+      queryClient.invalidateQueries({ queryKey: ['board-train-stays', stayId] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+    },
+  });
+}
+
+export function useCheckOutStay() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (stayId: string) => {
+      return staysService.checkOut(stayId);
+    },
+    onSuccess: (_, stayId) => {
+      queryClient.invalidateQueries({ queryKey: ['board-train-stays'] });
+      queryClient.invalidateQueries({ queryKey: ['board-train-stays', stayId] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+    },
+  });
+}
+
+export function useCancelStay() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (stayId: string) => {
+      return staysService.cancel(stayId);
+    },
+    onSuccess: (_, stayId) => {
+      queryClient.invalidateQueries({ queryKey: ['board-train-stays'] });
+      queryClient.invalidateQueries({ queryKey: ['board-train-stays', stayId] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+    },
+  });
+}
+
+export function useDeleteStay() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (stayId: string) => {
+      return staysService.delete(stayId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['board-train-stays'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+    },
+  });
+}
+
+// --- Calendar Appointments Hooks ---
+
+export function useCalendarAppointments(options?: {
+  dateRange?: { start: string; end: string };
+  dogId?: string;
+  trainerId?: string;
+}) {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['calendar-appointments', facility?.id, options],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      if (options?.dateRange) {
+        return appointmentsService.getByDateRange(
+          facility.id,
+          options.dateRange.start,
+          options.dateRange.end
+        );
+      }
+      if (options?.dogId) {
+        return appointmentsService.getByDog(options.dogId);
+      }
+      if (options?.trainerId) {
+        return appointmentsService.getByTrainer(options.trainerId);
+      }
+      return appointmentsService.getAll(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useUpcomingAppointments(limit?: number) {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['calendar-appointments', 'upcoming', facility?.id, limit],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return appointmentsService.getUpcoming(facility.id, limit);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useCalendarAppointment(appointmentId: string | undefined) {
+  return useQuery({
+    queryKey: ['calendar-appointments', appointmentId],
+    queryFn: async () => {
+      if (!appointmentId) return null;
+      return appointmentsService.getById(appointmentId);
+    },
+    enabled: !!appointmentId,
+  });
+}
+
+export function useCreateAppointment() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async (
+      data: Omit<CalendarAppointment, 'id' | 'created_at' | 'updated_at' | 'facility_id' | 'created_by'>
+    ) => {
+      if (!facility?.id) throw new Error('No facility');
+      return appointmentsService.create({
+        ...data,
+        facility_id: facility.id,
+        created_by: user?.id || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calendar-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+    },
+  });
+}
+
+export function useUpdateAppointment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<CalendarAppointment>;
+    }) => {
+      return appointmentsService.update(id, data);
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['calendar-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-appointments', id] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+    },
+  });
+}
+
+export function useConfirmAppointment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (appointmentId: string) => {
+      return appointmentsService.confirm(appointmentId);
+    },
+    onSuccess: (_, appointmentId) => {
+      queryClient.invalidateQueries({ queryKey: ['calendar-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-appointments', appointmentId] });
+    },
+  });
+}
+
+export function useCompleteAppointment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (appointmentId: string) => {
+      return appointmentsService.complete(appointmentId);
+    },
+    onSuccess: (_, appointmentId) => {
+      queryClient.invalidateQueries({ queryKey: ['calendar-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-appointments', appointmentId] });
+    },
+  });
+}
+
+export function useCancelAppointment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      appointmentId,
+      reason,
+    }: {
+      appointmentId: string;
+      reason?: string;
+    }) => {
+      return appointmentsService.cancel(appointmentId, reason);
+    },
+    onSuccess: (_, { appointmentId }) => {
+      queryClient.invalidateQueries({ queryKey: ['calendar-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-appointments', appointmentId] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+    },
+  });
+}
+
+export function useDeleteAppointment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (appointmentId: string) => {
+      return appointmentsService.delete(appointmentId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calendar-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+    },
+  });
+}
+
+// --- Calendar Blocks Hooks ---
+
+export function useCalendarBlocks(options?: {
+  dateRange?: { start: string; end: string };
+}) {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['calendar-blocks', facility?.id, options],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      if (options?.dateRange) {
+        return blocksService.getByDateRange(
+          facility.id,
+          options.dateRange.start,
+          options.dateRange.end
+        );
+      }
+      return blocksService.getAll(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useCreateBlock() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async (
+      data: Omit<CalendarBlock, 'id' | 'created_at' | 'updated_at' | 'facility_id' | 'created_by'>
+    ) => {
+      if (!facility?.id) throw new Error('No facility');
+      return blocksService.create({
+        ...data,
+        facility_id: facility.id,
+        created_by: user?.id || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calendar-blocks'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+    },
+  });
+}
+
+export function useUpdateBlock() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<CalendarBlock>;
+    }) => {
+      return blocksService.update(id, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calendar-blocks'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+    },
+  });
+}
+
+export function useDeleteBlock() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (blockId: string) => {
+      return blocksService.delete(blockId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calendar-blocks'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+    },
+  });
+}
+
+// --- Schedule Templates Hooks ---
+
+export function useScheduleTemplates() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['schedule-templates', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return scheduleTemplatesService.getAll(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useCreateScheduleTemplate() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async (
+      data: Omit<TrainingScheduleTemplate, 'id' | 'created_at' | 'updated_at' | 'facility_id' | 'created_by'>
+    ) => {
+      if (!facility?.id) throw new Error('No facility');
+      return scheduleTemplatesService.create({
+        ...data,
+        facility_id: facility.id,
+        created_by: user?.id || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedule-templates'] });
+    },
+  });
+}
+
+export function useUpdateScheduleTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<TrainingScheduleTemplate>;
+    }) => {
+      return scheduleTemplatesService.update(id, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedule-templates'] });
+    },
+  });
+}
+
+export function useDeleteScheduleTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (templateId: string) => {
+      return scheduleTemplatesService.delete(templateId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedule-templates'] });
+    },
+  });
+}
+
+// --- Stay Daily Logs Hooks ---
+
+export function useStayDailyLogs(stayId: string | undefined) {
+  return useQuery({
+    queryKey: ['stay-daily-logs', stayId],
+    queryFn: async () => {
+      if (!stayId) return [];
+      return dailyLogsService.getByStay(stayId);
+    },
+    enabled: !!stayId,
+  });
+}
+
+export function useStayDailyLog(stayId: string | undefined, date: string | undefined) {
+  return useQuery({
+    queryKey: ['stay-daily-logs', stayId, date],
+    queryFn: async () => {
+      if (!stayId || !date) return null;
+      return dailyLogsService.getByDate(stayId, date);
+    },
+    enabled: !!stayId && !!date,
+  });
+}
+
+export function useCreateDailyLog() {
+  const queryClient = useQueryClient();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async (
+      data: Omit<StayDailyLog, 'id' | 'created_at' | 'updated_at' | 'logged_by'>
+    ) => {
+      return dailyLogsService.create({
+        ...data,
+        logged_by: user?.id || null,
+      });
+    },
+    onSuccess: (_, data) => {
+      queryClient.invalidateQueries({ queryKey: ['stay-daily-logs', data.stay_id] });
+    },
+  });
+}
+
+export function useUpdateDailyLog() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      stayId,
+      data,
+    }: {
+      id: string;
+      stayId: string;
+      data: Partial<StayDailyLog>;
+    }) => {
+      return dailyLogsService.update(id, data);
+    },
+    onSuccess: (_, { stayId }) => {
+      queryClient.invalidateQueries({ queryKey: ['stay-daily-logs', stayId] });
+    },
+  });
+}
+
+export function useUpsertDailyLog() {
+  const queryClient = useQueryClient();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async (
+      data: Omit<StayDailyLog, 'id' | 'created_at' | 'updated_at' | 'logged_by'>
+    ) => {
+      return dailyLogsService.upsert({
+        ...data,
+        logged_by: user?.id || null,
+      });
+    },
+    onSuccess: (_, data) => {
+      queryClient.invalidateQueries({ queryKey: ['stay-daily-logs', data.stay_id] });
+    },
+  });
+}
+
+// --- Combined Calendar Events Hook ---
+
+export function useCalendarEvents(dateRange: { start: string; end: string }) {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['calendar-events', facility?.id, dateRange],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return calendarService.getCalendarEvents(
+        facility.id,
+        dateRange.start,
+        dateRange.end
+      );
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+// --- Pet Parent Calendar Hooks ---
+
+export function usePetParentStays() {
+  const user = useUser();
+
+  return useQuery({
+    queryKey: ['pet-parent-stays', user?.id],
+    queryFn: async () => {
+      if (isDemoMode() || !user?.id) {
+        // Return demo stays for pet parent view
+        return [
+          {
+            id: 'stay-demo-1',
+            dog: { id: 'a', name: 'Max', breed: 'German Shepherd', photo_url: null },
+            check_in_date: '2025-01-06',
+            check_out_date: '2025-01-27',
+            status: 'checked_in',
+            kennel_number: 'K-101',
+            program: { name: '3-Week Board & Train' },
+            days_remaining: 12,
+            daily_logs: [],
+          },
+        ];
+      }
+      // In production, fetch stays for family's dogs
+      return [];
+    },
+    enabled: !!user?.id || isDemoMode(),
+  });
+}
+
+export function usePetParentAppointments() {
+  const user = useUser();
+
+  return useQuery({
+    queryKey: ['pet-parent-appointments', user?.id],
+    queryFn: async () => {
+      if (isDemoMode() || !user?.id) {
+        // Return demo appointments for pet parent
+        return [
+          {
+            id: 'appt-demo-1',
+            title: 'Training Session',
+            dog: { id: 'a', name: 'Max' },
+            start_time: new Date().toISOString(),
+            end_time: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+            appointment_type: 'training',
+            trainer: { name: 'Sarah Johnson' },
+            location: 'Training Yard A',
+          },
+          {
+            id: 'appt-demo-2',
+            title: 'Pick Up - Max',
+            dog: { id: 'a', name: 'Max' },
+            start_time: new Date('2025-01-27T16:00:00').toISOString(),
+            end_time: new Date('2025-01-27T16:30:00').toISOString(),
+            appointment_type: 'pickup',
+            trainer: null,
+            location: 'Front Office',
+          },
+        ];
+      }
+      // In production, fetch appointments for family's dogs
+      return [];
+    },
+    enabled: !!user?.id || isDemoMode(),
+  });
+}
+
+// ============================================================================
+// DAILY REPORTS HOOKS
+// ============================================================================
+
+import {
+  dailyReportsService,
+  reportTemplatesService,
+  reportCommentsService,
+  reportReactionsService,
+  reportsService,
+} from '@/services/supabase/reports';
+import type {
+  DailyReportFull,
+  DailyReportWithDetails,
+  ReportTemplate,
+  ReportComment,
+  ReportStatus,
+} from '@/types/database';
+
+// --- Daily Reports Hooks ---
+
+export function useDailyReports(options?: {
+  status?: ReportStatus;
+  dogId?: string;
+  date?: string;
+  dateRange?: { start: string; end: string };
+}) {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['daily-reports', facility?.id, options],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return dailyReportsService.getAll(facility.id, options);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useTodaysReports() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['daily-reports', 'today', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return dailyReportsService.getTodaysReports(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useDraftReports() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['daily-reports', 'drafts', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return dailyReportsService.getDrafts(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useReadyReports() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['daily-reports', 'ready', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return dailyReportsService.getReady(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useDailyReport(reportId: string | undefined) {
+  return useQuery({
+    queryKey: ['daily-reports', reportId],
+    queryFn: async () => {
+      if (!reportId) return null;
+      return dailyReportsService.getById(reportId);
+    },
+    enabled: !!reportId,
+  });
+}
+
+export function useDogReport(dogId: string | undefined, date: string | undefined) {
+  return useQuery({
+    queryKey: ['daily-reports', 'dog', dogId, date],
+    queryFn: async () => {
+      if (!dogId || !date) return null;
+      return dailyReportsService.getByDogAndDate(dogId, date);
+    },
+    enabled: !!dogId && !!date,
+  });
+}
+
+export function useGenerateReport() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async ({
+      dogId,
+      programId,
+      date,
+    }: {
+      dogId: string;
+      programId: string | null;
+      date: string;
+    }) => {
+      if (!facility?.id || !user?.id) throw new Error('Not authenticated');
+      return dailyReportsService.generateReport(
+        facility.id,
+        dogId,
+        programId,
+        date,
+        user.id
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['daily-reports'] });
+    },
+  });
+}
+
+export function useUpdateDailyReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<DailyReportFull>;
+    }) => {
+      return dailyReportsService.update(id, data);
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['daily-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-reports', id] });
+    },
+  });
+}
+
+export function useMarkReportReady() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (reportId: string) => {
+      return dailyReportsService.markAsReady(reportId);
+    },
+    onSuccess: (_, reportId) => {
+      queryClient.invalidateQueries({ queryKey: ['daily-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-reports', reportId] });
+    },
+  });
+}
+
+export function useSendReport() {
+  const queryClient = useQueryClient();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async (reportId: string) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      return dailyReportsService.sendReport(reportId, user.id);
+    },
+    onSuccess: (_, reportId) => {
+      queryClient.invalidateQueries({ queryKey: ['daily-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-reports', reportId] });
+    },
+  });
+}
+
+export function useBulkSendReports() {
+  const queryClient = useQueryClient();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async (reportIds: string[]) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      return dailyReportsService.bulkSend(reportIds, user.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['daily-reports'] });
+    },
+  });
+}
+
+export function useRegenerateSummary() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (reportId: string) => {
+      return dailyReportsService.regenerateSummary(reportId);
+    },
+    onSuccess: (_, reportId) => {
+      queryClient.invalidateQueries({ queryKey: ['daily-reports', reportId] });
+    },
+  });
+}
+
+export function useDeleteReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (reportId: string) => {
+      return dailyReportsService.delete(reportId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['daily-reports'] });
+    },
+  });
+}
+
+// --- Report Stats Hook ---
+
+export function useReportStats() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['report-stats', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return null;
+      return reportsService.getReportStats(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+// --- Report Templates Hooks ---
+
+export function useReportTemplates() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['report-templates', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return reportTemplatesService.getAll(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useDefaultReportTemplate() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['report-templates', 'default', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return null;
+      return reportTemplatesService.getDefault(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useCreateReportTemplate() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async (
+      data: Omit<ReportTemplate, 'id' | 'created_at' | 'updated_at' | 'facility_id' | 'created_by'>
+    ) => {
+      if (!facility?.id) throw new Error('No facility');
+      return reportTemplatesService.create({
+        ...data,
+        facility_id: facility.id,
+        created_by: user?.id || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['report-templates'] });
+    },
+  });
+}
+
+export function useUpdateReportTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<ReportTemplate>;
+    }) => {
+      return reportTemplatesService.update(id, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['report-templates'] });
+    },
+  });
+}
+
+export function useDeleteReportTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (templateId: string) => {
+      return reportTemplatesService.delete(templateId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['report-templates'] });
+    },
+  });
+}
+
+// --- Report Comments Hooks ---
+
+export function useReportComments(reportId: string | undefined) {
+  return useQuery({
+    queryKey: ['report-comments', reportId],
+    queryFn: async () => {
+      if (!reportId) return [];
+      return reportCommentsService.getByReport(reportId);
+    },
+    enabled: !!reportId,
+  });
+}
+
+export function useAddReportComment() {
+  const queryClient = useQueryClient();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async ({
+      reportId,
+      content,
+      commenterType,
+    }: {
+      reportId: string;
+      content: string;
+      commenterType: 'parent' | 'trainer';
+    }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      return reportCommentsService.create({
+        report_id: reportId,
+        user_id: user.id,
+        content,
+        commenter_type: commenterType,
+      });
+    },
+    onSuccess: (_, { reportId }) => {
+      queryClient.invalidateQueries({ queryKey: ['report-comments', reportId] });
+      queryClient.invalidateQueries({ queryKey: ['daily-reports', reportId] });
+    },
+  });
+}
+
+export function useUpdateReportComment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      reportId,
+      content,
+    }: {
+      id: string;
+      reportId: string;
+      content: string;
+    }) => {
+      return reportCommentsService.update(id, content);
+    },
+    onSuccess: (_, { reportId }) => {
+      queryClient.invalidateQueries({ queryKey: ['report-comments', reportId] });
+    },
+  });
+}
+
+export function useDeleteReportComment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      reportId,
+    }: {
+      id: string;
+      reportId: string;
+    }) => {
+      return reportCommentsService.delete(id);
+    },
+    onSuccess: (_, { reportId }) => {
+      queryClient.invalidateQueries({ queryKey: ['report-comments', reportId] });
+    },
+  });
+}
+
+// --- Report Reactions Hooks ---
+
+export function useReportReactions(reportId: string | undefined) {
+  return useQuery({
+    queryKey: ['report-reactions', reportId],
+    queryFn: async () => {
+      if (!reportId) return [];
+      return reportReactionsService.getByReport(reportId);
+    },
+    enabled: !!reportId,
+  });
+}
+
+export function useAddReportReaction() {
+  const queryClient = useQueryClient();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async ({
+      reportId,
+      reaction,
+    }: {
+      reportId: string;
+      reaction: string;
+    }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      return reportReactionsService.add(reportId, user.id, reaction);
+    },
+    onSuccess: (_, { reportId }) => {
+      queryClient.invalidateQueries({ queryKey: ['report-reactions', reportId] });
+      queryClient.invalidateQueries({ queryKey: ['daily-reports', reportId] });
+    },
+  });
+}
+
+export function useRemoveReportReaction() {
+  const queryClient = useQueryClient();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async ({
+      reportId,
+      reaction,
+    }: {
+      reportId: string;
+      reaction: string;
+    }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      return reportReactionsService.remove(reportId, user.id, reaction);
+    },
+    onSuccess: (_, { reportId }) => {
+      queryClient.invalidateQueries({ queryKey: ['report-reactions', reportId] });
+      queryClient.invalidateQueries({ queryKey: ['daily-reports', reportId] });
+    },
+  });
+}
+
+// ============================================================================
+// VIDEO LIBRARY HOOKS
+// ============================================================================
+
+import {
+  videosService,
+  videoFoldersService,
+  playlistsService,
+  videoSharesService,
+  videoLibraryService,
+} from '@/services/supabase/videos';
+import type {
+  TrainingVideo,
+  TrainingVideoWithDetails,
+  VideoFolder,
+  VideoPlaylist,
+  VideoCategory,
+  VideoVisibility,
+} from '@/types/database';
+
+export function useTrainingVideos(options?: {
+  category?: VideoCategory;
+  folderId?: string | null;
+  visibility?: VideoVisibility;
+  search?: string;
+}) {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['training-videos', facility?.id, options],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return videosService.getAll(facility.id, options);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useTrainingVideo(videoId: string | undefined) {
+  return useQuery({
+    queryKey: ['training-videos', videoId],
+    queryFn: async () => {
+      if (!videoId) return null;
+      return videosService.getById(videoId);
+    },
+    enabled: !!videoId,
+  });
+}
+
+export function useFeaturedVideos() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['training-videos', 'featured', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return videosService.getFeatured(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useCreateVideo() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async (
+      data: Omit<TrainingVideo, 'id' | 'created_at' | 'updated_at' | 'view_count' | 'facility_id' | 'uploaded_by'>
+    ) => {
+      if (!facility?.id) throw new Error('No facility');
+      return videosService.create({
+        ...data,
+        facility_id: facility.id,
+        uploaded_by: user?.id || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['training-videos'] });
+      queryClient.invalidateQueries({ queryKey: ['video-stats'] });
+    },
+  });
+}
+
+export function useUpdateVideo() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<TrainingVideo>;
+    }) => {
+      return videosService.update(id, data);
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['training-videos'] });
+      queryClient.invalidateQueries({ queryKey: ['training-videos', id] });
+    },
+  });
+}
+
+export function useDeleteVideo() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (videoId: string) => {
+      return videosService.delete(videoId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['training-videos'] });
+      queryClient.invalidateQueries({ queryKey: ['video-stats'] });
+    },
+  });
+}
+
+export function useVideoFolders() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['video-folders', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return videoFoldersService.getAll(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useCreateVideoFolder() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async (
+      data: Omit<VideoFolder, 'id' | 'created_at' | 'updated_at' | 'facility_id' | 'created_by'>
+    ) => {
+      if (!facility?.id) throw new Error('No facility');
+      return videoFoldersService.create({
+        ...data,
+        facility_id: facility.id,
+        created_by: user?.id || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['video-folders'] });
+    },
+  });
+}
+
+export function useVideoPlaylists() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['video-playlists', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return playlistsService.getAll(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useVideoPlaylist(playlistId: string | undefined) {
+  return useQuery({
+    queryKey: ['video-playlists', playlistId],
+    queryFn: async () => {
+      if (!playlistId) return null;
+      return playlistsService.getById(playlistId);
+    },
+    enabled: !!playlistId,
+  });
+}
+
+export function useShareVideo() {
+  const queryClient = useQueryClient();
+  const user = useUser();
+
+  return useMutation({
+    mutationFn: async ({
+      videoId,
+      familyId,
+      dogId,
+      message,
+    }: {
+      videoId: string;
+      familyId?: string;
+      dogId?: string;
+      message?: string;
+    }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      return videoSharesService.shareVideo(videoId, {
+        familyId,
+        dogId,
+        sharedBy: user.id,
+        message,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['video-shares'] });
+    },
+  });
+}
+
+export function useVideoLibraryStats() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['video-stats', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return null;
+      return videoLibraryService.getLibraryStats(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+// ============================================================================
+// LIVE STATUS FEED HOOKS
+// ============================================================================
+
+// --- Status Feed Hooks ---
+
+export function useDogStatusFeed(dogId: string | undefined, options?: { limit?: number }) {
+  return useQuery({
+    queryKey: ['status-feed', dogId, options],
+    queryFn: async () => {
+      if (!dogId) return [];
+      return statusFeedService.getDogFeedWithDetails(dogId, options);
+    },
+    enabled: !!dogId,
+    refetchInterval: 30000, // Refetch every 30 seconds for near-real-time updates
+  });
+}
+
+export function useFacilityStatusFeed(options?: { dogId?: string; updateType?: StatusUpdateType; limit?: number }) {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['facility-feed', facility?.id, options],
+    queryFn: async () => {
+      if (!facility?.id) return [];
+      return statusFeedService.getFacilityFeed(facility.id, options);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useStatusPresets() {
+  return useQuery({
+    queryKey: ['status-presets'],
+    queryFn: () => statusFeedService.getPresets(),
+  });
+}
+
+export function useCreateStatusUpdate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      dog_id: string;
+      update_type: StatusUpdateType;
+      title: string;
+      description?: string;
+      media_url?: string;
+      media_type?: 'image' | 'video';
+      thumbnail_url?: string;
+      mood?: DogMood;
+      energy_level?: number;
+      activity_id?: string;
+      is_visible_to_parents?: boolean;
+      is_highlighted?: boolean;
+    }) => {
+      return statusFeedService.createStatusUpdate(data);
+    },
+    onSuccess: (_, data) => {
+      queryClient.invalidateQueries({ queryKey: ['status-feed', data.dog_id] });
+      queryClient.invalidateQueries({ queryKey: ['facility-feed'] });
+    },
+  });
+}
+
+export function useCreateStatusFromPreset() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      presetId,
+      dogId,
+      customDescription,
+    }: {
+      presetId: string;
+      dogId: string;
+      customDescription?: string;
+    }) => {
+      return statusFeedService.createFromPreset(presetId, dogId, customDescription);
+    },
+    onSuccess: (_, { dogId }) => {
+      queryClient.invalidateQueries({ queryKey: ['status-feed', dogId] });
+      queryClient.invalidateQueries({ queryKey: ['facility-feed'] });
+    },
+  });
+}
+
+export function useUpdateStatusItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      dogId,
+      data,
+    }: {
+      id: string;
+      dogId: string;
+      data: Partial<Omit<StatusFeedItem, 'id' | 'created_at'>>;
+    }) => {
+      return statusFeedService.updateStatusItem(id, data);
+    },
+    onSuccess: (_, { dogId }) => {
+      queryClient.invalidateQueries({ queryKey: ['status-feed', dogId] });
+      queryClient.invalidateQueries({ queryKey: ['facility-feed'] });
+    },
+  });
+}
+
+export function useDeleteStatusItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, dogId }: { id: string; dogId: string }) => {
+      return statusFeedService.deleteStatusItem(id);
+    },
+    onSuccess: (_, { dogId }) => {
+      queryClient.invalidateQueries({ queryKey: ['status-feed', dogId] });
+      queryClient.invalidateQueries({ queryKey: ['facility-feed'] });
+    },
+  });
+}
+
+// --- Feed Reaction Hooks ---
+
+export function useAddFeedReaction() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      feedItemId,
+      reaction,
+    }: {
+      feedItemId: string;
+      reaction: string;
+    }) => {
+      return feedReactionsService.addReaction(feedItemId, reaction);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['status-feed'] });
+    },
+  });
+}
+
+export function useRemoveFeedReaction() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      feedItemId,
+      reaction,
+    }: {
+      feedItemId: string;
+      reaction: string;
+    }) => {
+      return feedReactionsService.removeReaction(feedItemId, reaction);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['status-feed'] });
+    },
+  });
+}
+
+// --- Feed Comment Hooks ---
+
+export function useAddFeedComment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      feedItemId,
+      content,
+    }: {
+      feedItemId: string;
+      content: string;
+    }) => {
+      return feedCommentsService.addComment(feedItemId, content);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['status-feed'] });
+    },
+  });
+}
+
+export function useUpdateFeedComment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      content,
+    }: {
+      id: string;
+      content: string;
+    }) => {
+      return feedCommentsService.updateComment(id, content);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['status-feed'] });
+    },
+  });
+}
+
+export function useDeleteFeedComment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return feedCommentsService.deleteComment(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['status-feed'] });
+    },
+  });
+}
+
+// --- Pet Parent Status Feed Hook (for pet parent portal) ---
+
+export function usePetParentStatusFeed(dogIds?: string[]) {
+  return useQuery({
+    queryKey: ['pet-parent-feed', dogIds],
+    queryFn: async () => {
+      if (!dogIds || dogIds.length === 0) return [];
+
+      // Fetch feed for all dogs and combine
+      const feeds = await Promise.all(
+        dogIds.map(dogId => statusFeedService.getDogFeedWithDetails(dogId, { limit: 20 }))
+      );
+
+      // Flatten and sort by created_at
+      return feeds
+        .flat()
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 50);
+    },
+    enabled: !!dogIds && dogIds.length > 0,
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+}
+
+// ============================================================================
+// BUSINESS MODE CONFIGURATION HOOKS
+// ============================================================================
+
+export function useFacilityConfig() {
+  const facility = useFacility();
+
+  return useQuery({
+    queryKey: ['facility-config', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return null;
+      return facilityConfigService.getConfig(facility.id);
+    },
+    enabled: !!facility?.id || isDemoMode(),
+  });
+}
+
+export function useFeatureFlags(): FeatureFlags | null {
+  const { data: config } = useFacilityConfig();
+  if (!config) return null;
+  return configToFeatureFlags(config);
+}
+
+export function useUpdateFacilityConfig() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+
+  return useMutation({
+    mutationFn: async (
+      data: Partial<Omit<FacilityConfig, 'id' | 'facility_id' | 'created_at' | 'updated_at'>>
+    ) => {
+      if (!facility?.id) throw new Error('No facility');
+      return facilityConfigService.updateConfig(facility.id, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['facility-config'] });
+    },
+  });
+}
+
+export function useSwitchBusinessMode() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+
+  return useMutation({
+    mutationFn: async ({
+      mode,
+      applyPreset,
+    }: {
+      mode: BusinessMode;
+      applyPreset?: string;
+    }) => {
+      if (!facility?.id) throw new Error('No facility');
+      return facilityConfigService.switchBusinessMode(facility.id, mode, applyPreset);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['facility-config'] });
+    },
+  });
+}
+
+export function useFeaturePresets(mode?: BusinessMode) {
+  return useQuery({
+    queryKey: ['feature-presets', mode],
+    queryFn: () => facilityConfigService.getPresets(mode),
+  });
+}
+
+export function useApplyPreset() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+
+  return useMutation({
+    mutationFn: async (presetId: string) => {
+      if (!facility?.id) throw new Error('No facility');
+      return facilityConfigService.applyPreset(facility.id, presetId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['facility-config'] });
+    },
+  });
+}
+
+export function useToggleFeature() {
+  const queryClient = useQueryClient();
+  const facility = useFacility();
+
+  return useMutation({
+    mutationFn: async ({
+      feature,
+      enabled,
+    }: {
+      feature: string;
+      enabled: boolean;
+    }) => {
+      if (!facility?.id) throw new Error('No facility');
+      return facilityConfigService.toggleFeature(facility.id, feature, enabled);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['facility-config'] });
+    },
   });
 }

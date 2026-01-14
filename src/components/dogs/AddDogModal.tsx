@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input, Textarea, Select } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
-import { useFamilies, useCreateDog } from '@/hooks';
+import { useFamilies, useCreateDog, useCreateFamily } from '@/hooks';
 import { isDemoMode } from '@/lib/supabase';
 import {
   Dog,
@@ -22,6 +22,9 @@ import {
   Pill,
   UtensilsCrossed,
   AlertCircle,
+  Plus,
+  Phone,
+  Mail,
 } from 'lucide-react';
 
 interface AddDogModalProps {
@@ -45,6 +48,12 @@ interface DogFormData {
   medications: string;
 }
 
+interface NewFamilyData {
+  name: string;
+  phone: string;
+  email: string;
+}
+
 const initialFormData: DogFormData = {
   family_id: '',
   name: '',
@@ -60,6 +69,12 @@ const initialFormData: DogFormData = {
   medications: '',
 };
 
+const initialNewFamilyData: NewFamilyData = {
+  name: '',
+  phone: '',
+  email: '',
+};
+
 const STEPS = [
   { id: 1, title: 'Family', description: 'Select the owner family' },
   { id: 2, title: 'Basic Info', description: 'Name, breed, and details' },
@@ -71,9 +86,13 @@ export function AddDogModal({ isOpen, onClose, onSuccess }: AddDogModalProps) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<DogFormData>(initialFormData);
   const [errors, setErrors] = useState<Partial<Record<keyof DogFormData, string>>>({});
+  const [isCreatingNewFamily, setIsCreatingNewFamily] = useState(false);
+  const [newFamilyData, setNewFamilyData] = useState<NewFamilyData>(initialNewFamilyData);
+  const [newFamilyErrors, setNewFamilyErrors] = useState<Partial<Record<keyof NewFamilyData, string>>>({});
 
   const { data: families, isLoading: familiesLoading } = useFamilies();
   const createDog = useCreateDog();
+  const createFamily = useCreateFamily();
 
   const totalSteps = STEPS.length;
 
@@ -85,8 +104,11 @@ export function AddDogModal({ isOpen, onClose, onSuccess }: AddDogModalProps) {
 
   // Get selected family name for review
   const selectedFamilyName = useMemo(() => {
+    if (isCreatingNewFamily) {
+      return newFamilyData.name || 'New Family';
+    }
     return families?.find((f) => f.id === formData.family_id)?.name || '';
-  }, [families, formData.family_id]);
+  }, [families, formData.family_id, isCreatingNewFamily, newFamilyData.name]);
 
   // Update form field
   const updateField = (field: keyof DogFormData, value: string) => {
@@ -97,13 +119,26 @@ export function AddDogModal({ isOpen, onClose, onSuccess }: AddDogModalProps) {
     }
   };
 
+  // Update new family field
+  const updateNewFamilyField = (field: keyof NewFamilyData, value: string) => {
+    setNewFamilyData((prev) => ({ ...prev, [field]: value }));
+    if (newFamilyErrors[field]) {
+      setNewFamilyErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+  };
+
   // Validate current step
   const validateStep = (): boolean => {
     const newErrors: Partial<Record<keyof DogFormData, string>> = {};
+    const familyErrors: Partial<Record<keyof NewFamilyData, string>> = {};
 
     switch (step) {
       case 1:
-        if (!formData.family_id) {
+        if (isCreatingNewFamily) {
+          if (!newFamilyData.name.trim()) {
+            familyErrors.name = 'Family name is required';
+          }
+        } else if (!formData.family_id) {
           newErrors.family_id = 'Please select a family';
         }
         break;
@@ -116,14 +151,15 @@ export function AddDogModal({ isOpen, onClose, onSuccess }: AddDogModalProps) {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setNewFamilyErrors(familyErrors);
+    return Object.keys(newErrors).length === 0 && Object.keys(familyErrors).length === 0;
   };
 
   // Check if can proceed
   const canProceed = (): boolean => {
     switch (step) {
       case 1:
-        return !!formData.family_id;
+        return isCreatingNewFamily ? !!newFamilyData.name.trim() : !!formData.family_id;
       case 2:
         return !!formData.name.trim();
       default:
@@ -150,23 +186,38 @@ export function AddDogModal({ isOpen, onClose, onSuccess }: AddDogModalProps) {
     setStep(1);
     setFormData(initialFormData);
     setErrors({});
+    setIsCreatingNewFamily(false);
+    setNewFamilyData(initialNewFamilyData);
+    setNewFamilyErrors({});
     onClose();
   };
 
   // Submit
   const handleSubmit = async () => {
-    // In demo mode, simulate success
-    if (isDemoMode()) {
-      console.log('Creating dog (demo mode):', formData);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      handleClose();
-      onSuccess?.();
-      return;
-    }
-
     try {
+      let familyId = formData.family_id;
+
+      // Create family first if needed
+      if (isCreatingNewFamily) {
+        const newFamily = await createFamily.mutateAsync({
+          name: newFamilyData.name,
+          phone: newFamilyData.phone || undefined,
+          email: newFamilyData.email || undefined,
+        });
+        familyId = newFamily.id;
+      }
+
+      // In demo mode, simulate success after family creation
+      if (isDemoMode() && !isCreatingNewFamily) {
+        console.log('Creating dog (demo mode):', formData);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        handleClose();
+        onSuccess?.();
+        return;
+      }
+
       await createDog.mutateAsync({
-        family_id: formData.family_id,
+        family_id: familyId,
         name: formData.name,
         breed: formData.breed || null,
         date_of_birth: formData.date_of_birth || null,
@@ -186,7 +237,7 @@ export function AddDogModal({ isOpen, onClose, onSuccess }: AddDogModalProps) {
     }
   };
 
-  const isSubmitting = createDog.isPending;
+  const isSubmitting = createDog.isPending || createFamily.isPending;
 
   return (
     <Modal
@@ -251,69 +302,154 @@ export function AddDogModal({ isOpen, onClose, onSuccess }: AddDogModalProps) {
               </div>
               <h3 className="text-lg font-medium text-white">Who owns this dog?</h3>
               <p className="text-sm text-surface-400">
-                Select the family this dog belongs to
+                Select an existing family or create a new one
               </p>
             </div>
 
-            {familiesLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-brand-500" />
+            {/* Create New Family Option */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsCreatingNewFamily(true);
+                updateField('family_id', '');
+              }}
+              className={cn(
+                'w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left',
+                isCreatingNewFamily
+                  ? 'border-green-500 bg-green-500/10'
+                  : 'border-dashed border-surface-600 hover:border-surface-500 bg-surface-800/30'
+              )}
+            >
+              <div
+                className={cn(
+                  'w-10 h-10 rounded-full flex items-center justify-center',
+                  isCreatingNewFamily ? 'bg-green-500' : 'bg-surface-700'
+                )}
+              >
+                <Plus
+                  size={20}
+                  className={isCreatingNewFamily ? 'text-white' : 'text-surface-400'}
+                />
               </div>
-            ) : familyOptions.length === 0 ? (
-              <div className="text-center py-8">
-                <AlertCircle className="w-10 h-10 text-surface-500 mx-auto mb-2" />
-                <p className="text-surface-400">No families found</p>
-                <p className="text-sm text-surface-500">Create a family first</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {familyOptions.map((family) => (
-                  <button
-                    key={family.value}
-                    type="button"
-                    onClick={() => updateField('family_id', family.value)}
-                    className={cn(
-                      'w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left',
-                      formData.family_id === family.value
-                        ? 'border-brand-500 bg-brand-500/10'
-                        : 'border-surface-700 hover:border-surface-600 bg-surface-800/50'
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        'w-10 h-10 rounded-full flex items-center justify-center',
-                        formData.family_id === family.value
-                          ? 'bg-brand-500'
-                          : 'bg-surface-700'
-                      )}
-                    >
-                      <User
-                        size={20}
-                        className={
-                          formData.family_id === family.value
-                            ? 'text-white'
-                            : 'text-surface-400'
-                        }
-                      />
-                    </div>
-                    <span
-                      className={cn(
-                        'font-medium',
-                        formData.family_id === family.value
-                          ? 'text-white'
-                          : 'text-surface-300'
-                      )}
-                    >
-                      {family.label}
-                    </span>
-                    {formData.family_id === family.value && (
-                      <Check size={20} className="ml-auto text-brand-400" />
-                    )}
-                  </button>
-                ))}
+              <span
+                className={cn(
+                  'font-medium',
+                  isCreatingNewFamily ? 'text-white' : 'text-surface-300'
+                )}
+              >
+                Create New Family
+              </span>
+              {isCreatingNewFamily && (
+                <Check size={20} className="ml-auto text-green-400" />
+              )}
+            </button>
+
+            {/* New Family Form */}
+            {isCreatingNewFamily && (
+              <div className="p-4 rounded-xl border border-green-500/30 bg-green-500/5 space-y-3">
+                <Input
+                  label="Family Name *"
+                  value={newFamilyData.name}
+                  onChange={(e) => updateNewFamilyField('name', e.target.value)}
+                  placeholder="e.g., Johnson Family"
+                  leftIcon={<User size={16} />}
+                  error={newFamilyErrors.name}
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input
+                    label="Phone"
+                    value={newFamilyData.phone}
+                    onChange={(e) => updateNewFamilyField('phone', e.target.value)}
+                    placeholder="(555) 123-4567"
+                    leftIcon={<Phone size={16} />}
+                  />
+                  <Input
+                    label="Email"
+                    type="email"
+                    value={newFamilyData.email}
+                    onChange={(e) => updateNewFamilyField('email', e.target.value)}
+                    placeholder="email@example.com"
+                    leftIcon={<Mail size={16} />}
+                  />
+                </div>
               </div>
             )}
-            {errors.family_id && (
+
+            {/* Divider */}
+            {!isCreatingNewFamily && (
+              <div className="flex items-center gap-3 my-2">
+                <div className="flex-1 h-px bg-surface-700" />
+                <span className="text-xs text-surface-500 uppercase">or select existing</span>
+                <div className="flex-1 h-px bg-surface-700" />
+              </div>
+            )}
+
+            {/* Existing Families */}
+            {!isCreatingNewFamily && (
+              <>
+                {familiesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-brand-500" />
+                  </div>
+                ) : familyOptions.length === 0 ? (
+                  <div className="text-center py-6">
+                    <p className="text-surface-400 text-sm">No existing families</p>
+                    <p className="text-surface-500 text-xs">Use "Create New Family" above</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {familyOptions.map((family) => (
+                      <button
+                        key={family.value}
+                        type="button"
+                        onClick={() => {
+                          setIsCreatingNewFamily(false);
+                          updateField('family_id', family.value);
+                        }}
+                        className={cn(
+                          'w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left',
+                          formData.family_id === family.value
+                            ? 'border-brand-500 bg-brand-500/10'
+                            : 'border-surface-700 hover:border-surface-600 bg-surface-800/50'
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            'w-10 h-10 rounded-full flex items-center justify-center',
+                            formData.family_id === family.value
+                              ? 'bg-brand-500'
+                              : 'bg-surface-700'
+                          )}
+                        >
+                          <User
+                            size={20}
+                            className={
+                              formData.family_id === family.value
+                                ? 'text-white'
+                                : 'text-surface-400'
+                            }
+                          />
+                        </div>
+                        <span
+                          className={cn(
+                            'font-medium',
+                            formData.family_id === family.value
+                              ? 'text-white'
+                              : 'text-surface-300'
+                          )}
+                        >
+                          {family.label}
+                        </span>
+                        {formData.family_id === family.value && (
+                          <Check size={20} className="ml-auto text-brand-400" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+            {errors.family_id && !isCreatingNewFamily && (
               <p className="text-sm text-red-400">{errors.family_id}</p>
             )}
           </div>
@@ -495,7 +631,14 @@ export function AddDogModal({ isOpen, onClose, onSuccess }: AddDogModalProps) {
               <div className="p-4 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-surface-400">Family</span>
-                  <span className="text-sm text-white font-medium">{selectedFamilyName}</span>
+                  <span className="text-sm text-white font-medium flex items-center gap-2">
+                    {selectedFamilyName}
+                    {isCreatingNewFamily && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
+                        New
+                      </span>
+                    )}
+                  </span>
                 </div>
 
                 {formData.date_of_birth && (

@@ -18,6 +18,9 @@ import {
   Menu,
   X,
   ChevronDown,
+  BookOpen,
+  Activity,
+  MessageSquare,
 } from 'lucide-react';
 
 // Mock user data for pet parent
@@ -35,7 +38,10 @@ const mockPetParent = {
 
 const navItems = [
   { href: '/parent', label: 'Dashboard', icon: Home },
+  { href: '/parent/feed', label: 'Live Feed', icon: Activity },
   { href: '/parent/dogs', label: 'My Dogs', icon: Dog },
+  { href: '/parent/homework', label: 'Homework', icon: BookOpen },
+  { href: '/parent/messages', label: 'Messages', icon: MessageSquare },
   { href: '/parent/reports', label: 'Daily Reports', icon: FileText },
   { href: '/parent/gallery', label: 'Photo Gallery', icon: Image },
   { href: '/parent/achievements', label: 'Achievements', icon: Award },

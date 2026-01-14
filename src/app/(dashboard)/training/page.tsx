@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { AddDogModal } from '@/components/dogs/AddDogModal';
 import {
   DragDropContext,
   Droppable,
@@ -75,6 +76,7 @@ function transformToActivityDog(dog: TrainingBoardDog): ActivityDog {
 export default function TrainingBoardPage() {
   const user = useUser();
   const { data: boardData, isLoading, error, refetch } = useTrainingBoard();
+  const [isAddDogModalOpen, setIsAddDogModalOpen] = useState(false);
   const startActivity = useStartActivity();
   const endActivity = useEndActivity();
   const quickLog = useQuickLog();
@@ -367,7 +369,7 @@ export default function TrainingBoardPage() {
             <Button variant="outline" size="sm" leftIcon={<Filter size={16} />}>
               Filter
             </Button>
-            <Button variant="primary" size="sm" leftIcon={<Plus size={16} />}>
+            <Button variant="primary" size="sm" leftIcon={<Plus size={16} />} onClick={() => setIsAddDogModalOpen(true)}>
               Add Dog
             </Button>
           </div>
@@ -472,6 +474,13 @@ export default function TrainingBoardPage() {
 
       {/* Quick Log FAB */}
       <QuickLogFAB dogs={allDogs} onLog={handleQuickLog} />
+
+      {/* Add Dog Modal */}
+      <AddDogModal
+        isOpen={isAddDogModalOpen}
+        onClose={() => setIsAddDogModalOpen(false)}
+        onSuccess={() => refetch()}
+      />
     </div>
   );
 }

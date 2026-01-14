@@ -11,6 +11,7 @@ import {
   Dog,
   Users,
   Calendar,
+  CalendarDays,
   Award,
   FileText,
   Settings,
@@ -23,6 +24,10 @@ import {
   UserCog,
   Briefcase,
   Target,
+  BookOpen,
+  MessageSquare,
+  Video,
+  Activity,
 } from 'lucide-react';
 
 interface NavItem {
@@ -61,14 +66,43 @@ const navItems: NavItem[] = [
     icon: <Calendar size={20} />,
   },
   {
+    label: 'Calendar',
+    href: '/calendar',
+    icon: <CalendarDays size={20} />,
+    roles: ['owner', 'admin', 'trainer'],
+  },
+  {
+    label: 'Messages',
+    href: '/messages',
+    icon: <MessageSquare size={20} />,
+  },
+  {
+    label: 'Status Feed',
+    href: '/status-feed',
+    icon: <Activity size={20} />,
+    roles: ['owner', 'admin', 'trainer'],
+  },
+  {
     label: 'Badges',
     href: '/badges',
     icon: <Award size={20} />,
   },
   {
+    label: 'Homework',
+    href: '/homework',
+    icon: <BookOpen size={20} />,
+    roles: ['owner', 'admin', 'trainer'],
+  },
+  {
     label: 'Reports',
     href: '/reports',
     icon: <FileText size={20} />,
+  },
+  {
+    label: 'Videos',
+    href: '/videos',
+    icon: <Video size={20} />,
+    roles: ['owner', 'admin', 'trainer'],
   },
   {
     label: 'Analytics',

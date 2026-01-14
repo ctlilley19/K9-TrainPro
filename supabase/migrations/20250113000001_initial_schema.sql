@@ -59,7 +59,7 @@ CREATE TYPE dog_gender AS ENUM ('male', 'female');
 -- Training facilities/organizations (multi-tenant root)
 -- -----------------------------------------------------------------------------
 CREATE TABLE facilities (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
   logo_url TEXT,
   address VARCHAR(255),
@@ -88,7 +88,7 @@ CREATE TABLE facilities (
 -- All users within the system (trainers, admins, pet parents)
 -- -----------------------------------------------------------------------------
 CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   auth_id UUID NOT NULL UNIQUE, -- References Supabase auth.users
   facility_id UUID NOT NULL REFERENCES facilities(id) ON DELETE CASCADE,
   email VARCHAR(255) NOT NULL,
@@ -108,7 +108,7 @@ CREATE TABLE users (
 -- Pet parent families/households
 -- -----------------------------------------------------------------------------
 CREATE TABLE families (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   facility_id UUID NOT NULL REFERENCES facilities(id) ON DELETE CASCADE,
   primary_contact_id UUID REFERENCES users(id) ON DELETE SET NULL,
   name VARCHAR(255) NOT NULL,
@@ -133,7 +133,7 @@ CREATE TABLE families (
 -- Individual dogs belonging to families
 -- -----------------------------------------------------------------------------
 CREATE TABLE dogs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   breed VARCHAR(100),
@@ -157,7 +157,7 @@ CREATE TABLE dogs (
 -- Training programs for dogs
 -- -----------------------------------------------------------------------------
 CREATE TABLE programs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   dog_id UUID NOT NULL REFERENCES dogs(id) ON DELETE CASCADE,
   facility_id UUID NOT NULL REFERENCES facilities(id) ON DELETE CASCADE,
   type program_type NOT NULL,
@@ -180,7 +180,7 @@ CREATE TABLE programs (
 -- Activity logs for dogs (the core of the training board)
 -- -----------------------------------------------------------------------------
 CREATE TABLE activities (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   program_id UUID NOT NULL REFERENCES programs(id) ON DELETE CASCADE,
   dog_id UUID NOT NULL REFERENCES dogs(id) ON DELETE CASCADE,
   type activity_type NOT NULL,
@@ -199,7 +199,7 @@ CREATE TABLE activities (
 -- Photos and videos attached to activities or dogs
 -- -----------------------------------------------------------------------------
 CREATE TABLE media (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   activity_id UUID REFERENCES activities(id) ON DELETE CASCADE,
   dog_id UUID NOT NULL REFERENCES dogs(id) ON DELETE CASCADE,
   program_id UUID REFERENCES programs(id) ON DELETE CASCADE,
@@ -219,7 +219,7 @@ CREATE TABLE media (
 -- Auto-generated or manual daily reports for pet parents
 -- -----------------------------------------------------------------------------
 CREATE TABLE daily_reports (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   program_id UUID NOT NULL REFERENCES programs(id) ON DELETE CASCADE,
   dog_id UUID NOT NULL REFERENCES dogs(id) ON DELETE CASCADE,
   date DATE NOT NULL,
@@ -244,7 +244,7 @@ CREATE TABLE daily_reports (
 -- Earned badges for gamification
 -- -----------------------------------------------------------------------------
 CREATE TABLE badges (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   dog_id UUID NOT NULL REFERENCES dogs(id) ON DELETE CASCADE,
   badge_type VARCHAR(100) NOT NULL, -- e.g., 'recall_pro', 'zen_master', 'star_pupil'
   tier badge_tier, -- For tiered badges (skill levels)
@@ -263,7 +263,7 @@ CREATE TABLE badges (
 -- Skill tracking for dogs
 -- -----------------------------------------------------------------------------
 CREATE TABLE skills (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   dog_id UUID NOT NULL REFERENCES dogs(id) ON DELETE CASCADE,
   program_id UUID REFERENCES programs(id) ON DELETE SET NULL,
   skill_name VARCHAR(100) NOT NULL,
@@ -316,7 +316,7 @@ CREATE INDEX idx_activities_dog ON activities(dog_id);
 CREATE INDEX idx_activities_trainer ON activities(trainer_id);
 CREATE INDEX idx_activities_type ON activities(type);
 CREATE INDEX idx_activities_started_at ON activities(started_at);
-CREATE INDEX idx_activities_date ON activities(DATE(started_at));
+-- Date-based index removed (timezone-dependent cast not immutable)
 CREATE INDEX idx_activities_active ON activities(dog_id, ended_at) WHERE ended_at IS NULL;
 
 -- Media

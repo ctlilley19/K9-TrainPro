@@ -11,10 +11,36 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    color-scheme: dark;
   }
 
   body {
     @apply bg-surface-950 text-white;
+  }
+
+  /* Dark mode for native form elements */
+  select,
+  select option {
+    background-color: #1e293b; /* surface-800 */
+    color: #ffffff;
+  }
+
+  select option:checked,
+  select option:hover {
+    background-color: #334155; /* surface-700 */
+  }
+
+  /* Date/time input dark styling */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    color-scheme: dark;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
   }
 
   /* Custom Scrollbar */

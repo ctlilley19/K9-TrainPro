@@ -3,14 +3,20 @@
 import { useState, useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input, Textarea } from '@/components/ui/Input';
+import { Input } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
-import { cn, formatDate } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import {
+  usePetParentConversations,
+  useConversation,
+  useMessages,
+  useSendMessage,
+  useMarkMessagesAsRead,
+} from '@/hooks';
 import {
   MessageSquare,
   Send,
   Search,
-  Plus,
   Image,
   Paperclip,
   Check,
@@ -19,83 +25,52 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 
-// Mock conversations for parent
-const mockConversations = [
-  {
-    id: '1',
-    facility: { id: 'fac1', name: 'K9 Training Academy' },
-    dog: { id: 'a', name: 'Max', photo_url: null },
-    last_message: {
-      content: 'Max is doing fantastic! We just finished a great training session.',
-      sender_type: 'staff',
-      created_at: '2025-01-13T09:15:00Z',
-    },
-    unread_count: 1,
-    last_message_at: '2025-01-13T09:15:00Z',
-  },
-  {
-    id: '2',
-    facility: { id: 'fac1', name: 'K9 Training Academy' },
-    dog: { id: 'b', name: 'Bella', photo_url: null },
-    last_message: {
-      content: 'Thanks for the photos! She looks so happy.',
-      sender_type: 'parent',
-      created_at: '2025-01-13T08:00:00Z',
-    },
-    unread_count: 0,
-    last_message_at: '2025-01-13T08:00:00Z',
-  },
-];
-
-// Mock messages
-const mockMessages = [
-  {
-    id: '1',
-    sender_type: 'parent',
-    sender_name: 'You',
-    content: 'Hi! Just checking in on Max. How is he doing today?',
-    created_at: '2025-01-13T09:00:00Z',
-    read_at: '2025-01-13T09:05:00Z',
-  },
-  {
-    id: '2',
-    sender_type: 'staff',
-    sender_name: 'Sarah Johnson',
-    content: 'Good morning! Max is doing fantastic! We just finished a great training session focusing on heel work. He\'s really getting the hang of it!',
-    created_at: '2025-01-13T09:15:00Z',
-    read_at: null,
-  },
-  {
-    id: '3',
-    sender_type: 'staff',
-    sender_name: 'Sarah Johnson',
-    content: 'Here\'s a quick photo from today\'s session:',
-    attachments: [{ type: 'image', url: '/placeholder.jpg', name: 'max-training.jpg' }],
-    created_at: '2025-01-13T09:16:00Z',
-    read_at: null,
-  },
-];
-
 export default function ParentMessagesPage() {
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
-  const [newMessage, setNewMessage] = useState('');
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [messageInput, setMessageInput] = useState('');
   const [showConversations, setShowConversations] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const conversation = mockConversations.find((c) => c.id === selectedConversation);
+  const { data: conversations, isLoading: conversationsLoading } = usePetParentConversations();
+  const { data: selectedConversation } = useConversation(selectedConversationId || undefined);
+  const { data: messages, refetch: refetchMessages } = useMessages(selectedConversationId || undefined);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const sendMessage = useSendMessage();
+  const markAsRead = useMarkMessagesAsRead();
 
+  // Scroll to bottom when messages change
   useEffect(() => {
-    scrollToBottom();
-  }, [selectedConversation]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim()) return;
-    console.log('Sending message:', newMessage);
-    setNewMessage('');
+  // Mark messages as read when conversation is selected
+  useEffect(() => {
+    if (selectedConversationId) {
+      markAsRead.mutate({ conversationId: selectedConversationId, readerType: 'parent' });
+    }
+  }, [selectedConversationId]);
+
+  // Auto-select first conversation on load
+  useEffect(() => {
+    if (conversations && conversations.length > 0 && !selectedConversationId) {
+      setSelectedConversationId(conversations[0].id);
+    }
+  }, [conversations, selectedConversationId]);
+
+  const handleSendMessage = async () => {
+    if (!messageInput.trim() || !selectedConversationId) return;
+
+    try {
+      await sendMessage.mutateAsync({
+        conversation_id: selectedConversationId,
+        content: messageInput.trim(),
+        sender_type: 'parent',
+      });
+      setMessageInput('');
+      refetchMessages();
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -106,81 +81,118 @@ export default function ParentMessagesPage() {
   };
 
   const handleSelectConversation = (id: string) => {
-    setSelectedConversation(id);
+    setSelectedConversationId(id);
     setShowConversations(false);
   };
 
   const handleBackToList = () => {
     setShowConversations(true);
-    setSelectedConversation(null);
   };
+
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return formatTime(dateString);
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+
+  const unreadCount = conversations?.reduce((sum, c) => sum + c.parent_unread_count, 0) || 0;
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Messages</h1>
-        <p className="text-surface-400">Chat with your dog's trainers</p>
+        <p className="text-surface-400">
+          {unreadCount > 0 ? `${unreadCount} unread message${unreadCount !== 1 ? 's' : ''}` : "Chat with your dog's trainers"}
+        </p>
       </div>
 
       <div className="h-[calc(100vh-250px)] min-h-[500px]">
         <Card className="h-full flex flex-col overflow-hidden">
-          {/* Mobile: Show either list or conversation */}
           <div className="flex h-full">
             {/* Conversations List */}
             <div
               className={cn(
-                'w-full md:w-80 border-r border-surface-700 flex flex-col',
+                'w-full md:w-80 border-r border-white/[0.06] flex flex-col',
                 !showConversations && 'hidden md:flex'
               )}
             >
-              <div className="p-4 border-b border-surface-700">
+              <div className="p-4 border-b border-white/[0.06]">
                 <h2 className="font-medium text-white">Conversations</h2>
               </div>
               <div className="flex-1 overflow-y-auto">
-                {mockConversations.map((conv) => (
-                  <button
-                    key={conv.id}
-                    type="button"
-                    onClick={() => handleSelectConversation(conv.id)}
-                    className={cn(
-                      'w-full flex items-start gap-3 p-4 border-b border-surface-700/50 hover:bg-surface-800/50 transition-colors text-left',
-                      selectedConversation === conv.id && 'bg-surface-800/50'
-                    )}
-                  >
-                    <div className="relative">
-                      <Avatar name={conv.dog.name} size="md" />
-                      {conv.unread_count > 0 && (
-                        <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-brand-500 text-white text-xs flex items-center justify-center">
-                          {conv.unread_count}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium text-white truncate">
-                          {conv.dog.name}
-                        </h3>
-                        <span className="text-xs text-surface-500">
-                          {formatDate(conv.last_message_at, 'h:mm a')}
-                        </span>
-                      </div>
-                      <p className="text-sm text-surface-400 truncate">
-                        {conv.facility.name}
-                      </p>
-                      <p
+                {conversationsLoading ? (
+                  <div className="p-4 text-center text-surface-500">Loading...</div>
+                ) : conversations && conversations.length > 0 ? (
+                  <div className="divide-y divide-white/[0.06]">
+                    {conversations.map((conv) => (
+                      <button
+                        key={conv.id}
+                        type="button"
+                        onClick={() => handleSelectConversation(conv.id)}
                         className={cn(
-                          'text-sm truncate mt-1',
-                          conv.unread_count > 0
-                            ? 'text-white font-medium'
-                            : 'text-surface-500'
+                          'w-full flex items-start gap-3 p-4 hover:bg-surface-800/50 transition-colors text-left',
+                          selectedConversationId === conv.id && 'bg-surface-800/50'
                         )}
                       >
-                        {conv.last_message.sender_type === 'parent' && 'You: '}
-                        {conv.last_message.content}
-                      </p>
-                    </div>
-                  </button>
-                ))}
+                        <div className="relative">
+                          <Avatar name={conv.dog?.name || conv.family?.name || ''} size="md" />
+                          {conv.parent_unread_count > 0 && (
+                            <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-brand-500 text-white text-xs flex items-center justify-center">
+                              {conv.parent_unread_count}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-medium text-white truncate">
+                              {conv.dog?.name || 'General'}
+                            </h3>
+                            <span className="text-xs text-surface-500">
+                              {formatDate(conv.last_message_at)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-surface-400 truncate">
+                            {conv.title || 'Training Updates'}
+                          </p>
+                          <p
+                            className={cn(
+                              'text-sm truncate mt-1',
+                              conv.parent_unread_count > 0
+                                ? 'text-white font-medium'
+                                : 'text-surface-500'
+                            )}
+                          >
+                            {conv.last_message_preview || 'No messages yet'}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center">
+                    <MessageSquare size={32} className="mx-auto text-surface-600 mb-3" />
+                    <p className="text-surface-500">No conversations yet</p>
+                    <p className="text-sm text-surface-600 mt-2">
+                      Your trainer will message you here
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -191,10 +203,10 @@ export default function ParentMessagesPage() {
                 showConversations && 'hidden md:flex'
               )}
             >
-              {selectedConversation && conversation ? (
+              {selectedConversation ? (
                 <>
                   {/* Conversation Header */}
-                  <div className="flex items-center gap-3 p-4 border-b border-surface-700">
+                  <div className="flex items-center gap-3 p-4 border-b border-white/[0.06]">
                     <Button
                       variant="ghost"
                       size="icon-sm"
@@ -203,114 +215,98 @@ export default function ParentMessagesPage() {
                     >
                       <ArrowLeft size={18} />
                     </Button>
-                    <Avatar name={conversation.dog.name} size="md" />
+                    <Avatar name={selectedConversation.dog?.name || ''} size="md" />
                     <div>
                       <h3 className="font-medium text-white">
-                        {conversation.dog.name}
+                        {selectedConversation.dog?.name || 'General'}
                       </h3>
                       <p className="text-sm text-surface-400">
-                        {conversation.facility.name}
+                        {selectedConversation.title || 'Training Updates'}
                       </p>
                     </div>
                   </div>
 
                   {/* Messages */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {/* Date Divider */}
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1 h-px bg-surface-700" />
-                      <span className="text-xs text-surface-500">Today</span>
-                      <div className="flex-1 h-px bg-surface-700" />
-                    </div>
-
-                    {mockMessages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={cn(
-                          'flex',
-                          message.sender_type === 'parent'
-                            ? 'justify-end'
-                            : 'justify-start'
-                        )}
-                      >
+                    {messages?.map((msg) => {
+                      const isParent = msg.sender_type === 'parent';
+                      return (
                         <div
-                          className={cn(
-                            'max-w-[80%] rounded-2xl px-4 py-2',
-                            message.sender_type === 'parent'
-                              ? 'bg-brand-500 text-white rounded-br-md'
-                              : 'bg-surface-800 text-white rounded-bl-md'
-                          )}
+                          key={msg.id}
+                          className={cn('flex gap-3', isParent && 'flex-row-reverse')}
                         >
-                          {message.sender_type === 'staff' && (
-                            <p className="text-xs text-surface-400 mb-1">
-                              {message.sender_name}
-                            </p>
-                          )}
-                          <p>{message.content}</p>
-                          {message.attachments?.map((attachment, idx) => (
-                            <div
-                              key={idx}
-                              className="mt-2 rounded-lg overflow-hidden bg-surface-700/50"
-                            >
-                              <div className="h-40 flex items-center justify-center">
-                                <Image size={32} className="text-surface-500" />
-                              </div>
-                            </div>
-                          ))}
+                          <Avatar
+                            name={msg.sender?.name || (isParent ? 'You' : 'Trainer')}
+                            size="sm"
+                            className="flex-shrink-0"
+                          />
                           <div
                             className={cn(
-                              'flex items-center gap-1 mt-1',
-                              message.sender_type === 'parent'
-                                ? 'justify-end'
-                                : 'justify-start'
+                              'max-w-[80%] rounded-2xl px-4 py-2',
+                              isParent
+                                ? 'bg-brand-500 text-white rounded-br-md'
+                                : 'bg-surface-800 text-white rounded-bl-md'
                             )}
                           >
-                            <span
+                            {!isParent && msg.sender?.name && (
+                              <p className="text-xs text-surface-400 mb-1">
+                                {msg.sender.name}
+                              </p>
+                            )}
+                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                            <div
                               className={cn(
-                                'text-xs',
-                                message.sender_type === 'parent'
-                                  ? 'text-white/70'
-                                  : 'text-surface-500'
+                                'flex items-center gap-1 mt-1 text-xs',
+                                isParent ? 'text-white/70 justify-end' : 'text-surface-500'
                               )}
                             >
-                              {formatDate(message.created_at, 'h:mm a')}
-                            </span>
-                            {message.sender_type === 'parent' &&
-                              (message.read_at ? (
-                                <CheckCheck size={14} className="text-white/70" />
-                              ) : (
-                                <Check size={14} className="text-white/70" />
-                              ))}
+                              <span>{formatTime(msg.created_at)}</span>
+                              {isParent && (
+                                msg.read_by_trainer ? (
+                                  <CheckCheck size={12} />
+                                ) : (
+                                  <Check size={12} />
+                                )
+                              )}
+                            </div>
+                            {msg.reactions && msg.reactions.length > 0 && (
+                              <div className="flex gap-1 mt-1">
+                                {msg.reactions.map((r, i) => (
+                                  <span key={i} className="text-sm">{r.reaction}</span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     <div ref={messagesEndRef} />
                   </div>
 
                   {/* Message Input */}
-                  <div className="p-4 border-t border-surface-700">
+                  <div className="p-4 border-t border-white/[0.06]">
                     <div className="flex items-end gap-2">
-                      <Button variant="ghost" size="icon-sm">
+                      <Button variant="ghost" size="icon-sm" title="Attach file">
                         <Paperclip size={18} />
                       </Button>
-                      <Button variant="ghost" size="icon-sm">
+                      <Button variant="ghost" size="icon-sm" title="Attach image">
                         <Image size={18} />
                       </Button>
                       <div className="flex-1">
-                        <Textarea
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
+                        <textarea
+                          value={messageInput}
+                          onChange={(e) => setMessageInput(e.target.value)}
                           onKeyDown={handleKeyDown}
                           placeholder="Type a message..."
-                          className="min-h-[44px] max-h-32 resize-none"
+                          rows={1}
+                          className="w-full px-4 py-3 rounded-xl bg-surface-800 border border-white/[0.06] text-white placeholder:text-surface-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 resize-none min-h-[44px] max-h-32"
                         />
                       </div>
                       <Button
                         variant="primary"
                         size="icon"
                         onClick={handleSendMessage}
-                        disabled={!newMessage.trim()}
+                        disabled={!messageInput.trim() || sendMessage.isPending}
                       >
                         <Send size={18} />
                       </Button>

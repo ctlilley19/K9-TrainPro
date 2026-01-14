@@ -4,10 +4,21 @@ import { useState, useRef, useEffect } from 'react';
 import { PageHeader } from '@/components/layout';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input, Textarea } from '@/components/ui/Input';
+import { Input } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
-import { cn, formatDate } from '@/lib/utils';
-import { quickReplies } from '@/services/supabase/messages';
+import { Modal, ModalHeader, ModalContent, ModalFooter } from '@/components/ui/Modal';
+import { cn } from '@/lib/utils';
+import {
+  useConversations,
+  useConversation,
+  useMessages,
+  useSendMessage,
+  useMarkMessagesAsRead,
+  useCreateConversation,
+  useUpdateConversation,
+  useMessageTemplates,
+  useFamilies,
+} from '@/hooks';
 import {
   MessageSquare,
   Send,
@@ -21,123 +32,99 @@ import {
   Dog,
   Clock,
   Archive,
+  Pin,
   ChevronDown,
+  ChevronLeft,
+  FileText,
+  X,
 } from 'lucide-react';
 
-// Mock conversations
-const mockConversations = [
-  {
-    id: '1',
-    family: { id: 'f1', name: 'Anderson Family' },
-    dog: { id: 'a', name: 'Max', photo_url: null },
-    last_message: {
-      content: 'How is Max doing with the heel command?',
-      sender_type: 'parent',
-      created_at: '2025-01-13T14:30:00Z',
-    },
-    unread_count: 2,
-    last_message_at: '2025-01-13T14:30:00Z',
-  },
-  {
-    id: '2',
-    family: { id: 'f1', name: 'Anderson Family' },
-    dog: { id: 'b', name: 'Bella', photo_url: null },
-    last_message: {
-      content: 'Thanks for the photos! She looks so happy.',
-      sender_type: 'parent',
-      created_at: '2025-01-13T12:15:00Z',
-    },
-    unread_count: 0,
-    last_message_at: '2025-01-13T12:15:00Z',
-  },
-  {
-    id: '3',
-    family: { id: 'f2', name: 'Martinez Family' },
-    dog: { id: 'c', name: 'Luna', photo_url: null },
-    last_message: {
-      content: 'Luna is all ready for pickup!',
-      sender_type: 'staff',
-      created_at: '2025-01-13T10:00:00Z',
-    },
-    unread_count: 0,
-    last_message_at: '2025-01-13T10:00:00Z',
-  },
-];
-
-// Mock messages for selected conversation
-const mockMessages = [
-  {
-    id: '1',
-    sender_type: 'parent',
-    sender_name: 'Sarah Anderson',
-    content: 'Hi! Just checking in on Max. How is he doing today?',
-    created_at: '2025-01-13T09:00:00Z',
-    read_at: '2025-01-13T09:05:00Z',
-  },
-  {
-    id: '2',
-    sender_type: 'staff',
-    sender_name: 'Sarah Johnson',
-    content: 'Good morning! Max is doing fantastic! We just finished a great training session focusing on heel work. He\'s really getting the hang of it!',
-    created_at: '2025-01-13T09:15:00Z',
-    read_at: '2025-01-13T09:20:00Z',
-  },
-  {
-    id: '3',
-    sender_type: 'staff',
-    sender_name: 'Sarah Johnson',
-    content: 'Here\'s a quick video from today\'s session:',
-    attachments: [{ type: 'image', url: '/placeholder.jpg', name: 'max-training.jpg' }],
-    created_at: '2025-01-13T09:16:00Z',
-    read_at: '2025-01-13T09:20:00Z',
-  },
-  {
-    id: '4',
-    sender_type: 'parent',
-    sender_name: 'Sarah Anderson',
-    content: 'That\'s wonderful! He looks so focused. How is Max doing with the heel command?',
-    created_at: '2025-01-13T14:30:00Z',
-    read_at: null,
-  },
-];
-
 export default function MessagesPage() {
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedConversation, setSelectedConversation] = useState<string | null>('1');
-  const [newMessage, setNewMessage] = useState('');
-  const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [messageInput, setMessageInput] = useState('');
+  const [showNewConversation, setShowNewConversation] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [showMobileList, setShowMobileList] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const conversation = mockConversations.find((c) => c.id === selectedConversation);
+  const { data: conversations, isLoading: conversationsLoading } = useConversations({
+    isArchived: false,
+    search: searchQuery || undefined,
+  });
+  const { data: selectedConversation } = useConversation(selectedConversationId || undefined);
+  const { data: messages, refetch: refetchMessages } = useMessages(selectedConversationId || undefined);
+  const { data: templates } = useMessageTemplates({ isActive: true });
+  const { data: families } = useFamilies();
 
-  const filteredConversations = mockConversations.filter(
-    (c) =>
-      c.family.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.dog.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const sendMessage = useSendMessage();
+  const markAsRead = useMarkMessagesAsRead();
+  const createConversation = useCreateConversation();
+  const updateConversation = useUpdateConversation();
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  // Scroll to bottom when messages change
   useEffect(() => {
-    scrollToBottom();
-  }, [selectedConversation]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim()) return;
-    console.log('Sending message:', newMessage);
-    setNewMessage('');
-    // In real app, this would call messagesService.sendMessage
+  // Mark messages as read when conversation is selected
+  useEffect(() => {
+    if (selectedConversationId) {
+      markAsRead.mutate({ conversationId: selectedConversationId, readerType: 'trainer' });
+    }
+  }, [selectedConversationId]);
+
+  // Auto-select first conversation on load
+  useEffect(() => {
+    if (conversations && conversations.length > 0 && !selectedConversationId) {
+      setSelectedConversationId(conversations[0].id);
+    }
+  }, [conversations, selectedConversationId]);
+
+  const handleSendMessage = async () => {
+    if (!messageInput.trim() || !selectedConversationId) return;
+
+    try {
+      await sendMessage.mutateAsync({
+        conversation_id: selectedConversationId,
+        content: messageInput.trim(),
+        sender_type: 'trainer',
+      });
+      setMessageInput('');
+      refetchMessages();
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
   };
 
-  const handleQuickReply = (template: string) => {
-    const message = template
-      .replace('{dogName}', conversation?.dog.name || '')
-      .replace('{skill}', 'heel')
-      .replace('{date}', 'tomorrow at 2pm');
-    setNewMessage(message);
-    setShowQuickReplies(false);
+  const handleUseTemplate = (content: string) => {
+    // Replace placeholders with actual values
+    const dogName = selectedConversation?.dog?.name || 'your dog';
+    const processedContent = content.replace(/\{dog_name\}/g, dogName);
+    setMessageInput(processedContent);
+    setShowTemplates(false);
+  };
+
+  const handlePinConversation = async (id: string, isPinned: boolean) => {
+    await updateConversation.mutateAsync({
+      id,
+      data: { is_pinned: !isPinned },
+    });
+  };
+
+  const handleArchiveConversation = async (id: string) => {
+    await updateConversation.mutateAsync({
+      id,
+      data: { is_archived: true },
+    });
+    if (selectedConversationId === id) {
+      setSelectedConversationId(null);
+    }
+  };
+
+  const selectConversation = (id: string) => {
+    setSelectedConversationId(id);
+    setShowMobileList(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -147,22 +134,55 @@ export default function MessagesPage() {
     }
   };
 
+  const unreadCount = conversations?.reduce((sum, c) => sum + c.trainer_unread_count, 0) || 0;
+
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return formatTime(dateString);
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+
   return (
     <div>
       <PageHeader
         title="Messages"
-        description="Communicate with pet parents"
+        description={unreadCount > 0 ? `${unreadCount} unread` : 'Communicate with pet parents'}
         action={
-          <Button variant="primary" leftIcon={<Plus size={18} />}>
+          <Button
+            variant="primary"
+            leftIcon={<Plus size={18} />}
+            onClick={() => setShowNewConversation(true)}
+          >
             New Message
           </Button>
         }
       />
 
-      <div className="grid lg:grid-cols-3 gap-6 h-[calc(100vh-220px)]">
+      <div className="grid lg:grid-cols-3 gap-6 h-[calc(100vh-220px)] mt-6">
         {/* Conversations List */}
-        <Card className="lg:col-span-1 flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-surface-700">
+        <Card
+          className={cn(
+            'lg:col-span-1 flex flex-col overflow-hidden',
+            !showMobileList && 'hidden lg:flex'
+          )}
+        >
+          <div className="p-4 border-b border-white/[0.06]">
             <Input
               placeholder="Search conversations..."
               value={searchQuery}
@@ -171,163 +191,208 @@ export default function MessagesPage() {
             />
           </div>
           <div className="flex-1 overflow-y-auto">
-            {filteredConversations.map((conv) => (
-              <button
-                key={conv.id}
-                type="button"
-                onClick={() => setSelectedConversation(conv.id)}
-                className={cn(
-                  'w-full flex items-start gap-3 p-4 border-b border-surface-700/50 hover:bg-surface-800/50 transition-colors text-left',
-                  selectedConversation === conv.id && 'bg-surface-800/50'
-                )}
-              >
-                <div className="relative">
-                  <Avatar name={conv.dog.name} size="md" />
-                  {conv.unread_count > 0 && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-brand-500 text-white text-xs flex items-center justify-center">
-                      {conv.unread_count}
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-white truncate">
-                      {conv.dog.name}
-                    </h3>
-                    <span className="text-xs text-surface-500">
-                      {formatDate(conv.last_message_at, 'h:mm a')}
-                    </span>
-                  </div>
-                  <p className="text-sm text-surface-400 truncate">
-                    {conv.family.name}
-                  </p>
-                  <p
+            {conversationsLoading ? (
+              <div className="p-4 text-center text-surface-500">Loading...</div>
+            ) : conversations && conversations.length > 0 ? (
+              <div className="divide-y divide-white/[0.06]">
+                {conversations.map((conv) => (
+                  <button
+                    key={conv.id}
+                    type="button"
+                    onClick={() => selectConversation(conv.id)}
                     className={cn(
-                      'text-sm truncate mt-1',
-                      conv.unread_count > 0
-                        ? 'text-white font-medium'
-                        : 'text-surface-500'
+                      'w-full flex items-start gap-3 p-4 hover:bg-surface-800/50 transition-colors text-left',
+                      selectedConversationId === conv.id && 'bg-surface-800/50'
                     )}
                   >
-                    {conv.last_message.sender_type === 'staff' && 'You: '}
-                    {conv.last_message.content}
-                  </p>
-                </div>
-              </button>
-            ))}
+                    <div className="relative">
+                      <Avatar name={conv.family?.name || conv.dog?.name || ''} size="md" />
+                      {conv.trainer_unread_count > 0 && (
+                        <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-brand-500 text-white text-xs flex items-center justify-center">
+                          {conv.trainer_unread_count}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium text-white truncate">
+                            {conv.family?.name || 'Unknown'}
+                          </h3>
+                          {conv.is_pinned && (
+                            <Pin size={12} className="text-brand-400 flex-shrink-0" />
+                          )}
+                        </div>
+                        <span className="text-xs text-surface-500">
+                          {formatDate(conv.last_message_at)}
+                        </span>
+                      </div>
+                      {conv.dog && (
+                        <div className="flex items-center gap-1 text-xs text-surface-500 mt-0.5">
+                          <Dog size={10} />
+                          {conv.dog.name}
+                        </div>
+                      )}
+                      <p
+                        className={cn(
+                          'text-sm truncate mt-1',
+                          conv.trainer_unread_count > 0
+                            ? 'text-white font-medium'
+                            : 'text-surface-500'
+                        )}
+                      >
+                        {conv.last_message_preview || 'No messages yet'}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center">
+                <MessageSquare size={32} className="mx-auto text-surface-600 mb-3" />
+                <p className="text-surface-500">No conversations yet</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => setShowNewConversation(true)}
+                >
+                  Start a Conversation
+                </Button>
+              </div>
+            )}
           </div>
         </Card>
 
         {/* Messages Area */}
-        <Card className="lg:col-span-2 flex flex-col overflow-hidden">
-          {selectedConversation && conversation ? (
+        <Card
+          className={cn(
+            'lg:col-span-2 flex flex-col overflow-hidden',
+            showMobileList && 'hidden lg:flex'
+          )}
+        >
+          {selectedConversation ? (
             <>
               {/* Conversation Header */}
-              <div className="flex items-center justify-between p-4 border-b border-surface-700">
+              <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
                 <div className="flex items-center gap-3">
-                  <Avatar name={conversation.dog.name} size="md" />
+                  <button
+                    onClick={() => setShowMobileList(true)}
+                    className="lg:hidden p-2 -ml-2 hover:bg-surface-800 rounded-lg"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <Avatar name={selectedConversation.family?.name || ''} size="md" />
                   <div>
                     <h3 className="font-medium text-white">
-                      {conversation.dog.name}
+                      {selectedConversation.family?.name}
                     </h3>
-                    <p className="text-sm text-surface-400">
-                      {conversation.family.name}
-                    </p>
+                    {selectedConversation.dog && (
+                      <p className="text-sm text-surface-400 flex items-center gap-1">
+                        <Dog size={12} />
+                        {selectedConversation.dog.name}
+                      </p>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon-sm">
-                    <Dog size={18} />
-                  </Button>
-                  <Button variant="ghost" size="icon-sm">
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() =>
+                      handlePinConversation(
+                        selectedConversation.id,
+                        selectedConversation.is_pinned
+                      )
+                    }
+                    className={cn(
+                      'p-2 rounded-lg hover:bg-surface-800 transition-colors',
+                      selectedConversation.is_pinned && 'text-brand-400'
+                    )}
+                    title={selectedConversation.is_pinned ? 'Unpin' : 'Pin'}
+                  >
+                    <Pin size={18} />
+                  </button>
+                  <button
+                    onClick={() => handleArchiveConversation(selectedConversation.id)}
+                    className="p-2 rounded-lg hover:bg-surface-800 transition-colors text-surface-400"
+                    title="Archive"
+                  >
                     <Archive size={18} />
-                  </Button>
-                  <Button variant="ghost" size="icon-sm">
-                    <MoreVertical size={18} />
-                  </Button>
+                  </button>
                 </div>
               </div>
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {/* Date Divider */}
-                <div className="flex items-center gap-4">
-                  <div className="flex-1 h-px bg-surface-700" />
-                  <span className="text-xs text-surface-500">Today</span>
-                  <div className="flex-1 h-px bg-surface-700" />
-                </div>
-
-                {mockMessages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={cn(
-                      'flex',
-                      message.sender_type === 'staff' ? 'justify-end' : 'justify-start'
-                    )}
-                  >
+                {messages?.map((msg) => {
+                  const isTrainer = msg.sender_type === 'trainer';
+                  return (
                     <div
-                      className={cn(
-                        'max-w-[70%] rounded-2xl px-4 py-2',
-                        message.sender_type === 'staff'
-                          ? 'bg-brand-500 text-white rounded-br-md'
-                          : 'bg-surface-800 text-white rounded-bl-md'
-                      )}
+                      key={msg.id}
+                      className={cn('flex gap-3', isTrainer && 'flex-row-reverse')}
                     >
-                      <p>{message.content}</p>
-                      {message.attachments?.map((attachment, idx) => (
-                        <div
-                          key={idx}
-                          className="mt-2 rounded-lg overflow-hidden bg-surface-700/50"
-                        >
-                          <div className="h-32 flex items-center justify-center">
-                            <Image size={32} className="text-surface-500" />
-                          </div>
-                        </div>
-                      ))}
+                      <Avatar
+                        name={msg.sender?.name || (isTrainer ? 'Trainer' : 'Parent')}
+                        size="sm"
+                        className="flex-shrink-0"
+                      />
                       <div
                         className={cn(
-                          'flex items-center gap-1 mt-1',
-                          message.sender_type === 'staff'
-                            ? 'justify-end'
-                            : 'justify-start'
+                          'max-w-[70%] rounded-2xl px-4 py-2',
+                          isTrainer
+                            ? 'bg-brand-500 text-white rounded-br-md'
+                            : 'bg-surface-800 text-white rounded-bl-md'
                         )}
                       >
-                        <span
+                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                        <div
                           className={cn(
-                            'text-xs',
-                            message.sender_type === 'staff'
-                              ? 'text-white/70'
-                              : 'text-surface-500'
+                            'flex items-center gap-1 mt-1 text-xs',
+                            isTrainer ? 'text-white/70 justify-end' : 'text-surface-500'
                           )}
                         >
-                          {formatDate(message.created_at, 'h:mm a')}
-                        </span>
-                        {message.sender_type === 'staff' && (
-                          message.read_at ? (
-                            <CheckCheck size={14} className="text-white/70" />
-                          ) : (
-                            <Check size={14} className="text-white/70" />
-                          )
+                          <span>{formatTime(msg.created_at)}</span>
+                          {isTrainer && (
+                            msg.read_by_parent ? (
+                              <CheckCheck size={12} />
+                            ) : (
+                              <Check size={12} />
+                            )
+                          )}
+                        </div>
+                        {msg.reactions && msg.reactions.length > 0 && (
+                          <div className="flex gap-1 mt-1">
+                            {msg.reactions.map((r, i) => (
+                              <span key={i} className="text-sm">{r.reaction}</span>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Quick Replies */}
-              {showQuickReplies && (
-                <div className="px-4 pb-2">
-                  <div className="flex flex-wrap gap-2">
-                    {quickReplies.map((reply) => (
+              {/* Quick Replies Toggle */}
+              {showTemplates && (
+                <div className="px-4 pb-2 border-t border-white/[0.06] pt-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-surface-400">Quick Replies</span>
+                    <button
+                      onClick={() => setShowTemplates(false)}
+                      className="p-1 hover:bg-surface-800 rounded"
+                    >
+                      <X size={14} className="text-surface-500" />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                    {templates?.map((template) => (
                       <button
-                        key={reply.id}
-                        type="button"
-                        onClick={() => handleQuickReply(reply.template)}
+                        key={template.id}
+                        onClick={() => handleUseTemplate(template.content)}
                         className="px-3 py-1.5 rounded-full text-sm bg-surface-800 hover:bg-surface-700 text-surface-300 transition-colors"
                       >
-                        {reply.label}
+                        {template.title}
                       </button>
                     ))}
                   </div>
@@ -335,44 +400,40 @@ export default function MessagesPage() {
               )}
 
               {/* Message Input */}
-              <div className="p-4 border-t border-surface-700">
+              <div className="p-4 border-t border-white/[0.06]">
                 <div className="flex items-end gap-2">
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon-sm">
+                    <Button variant="ghost" size="icon-sm" title="Attach file">
                       <Paperclip size={18} />
                     </Button>
-                    <Button variant="ghost" size="icon-sm">
+                    <Button variant="ghost" size="icon-sm" title="Attach image">
                       <Image size={18} />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      onClick={() => setShowQuickReplies(!showQuickReplies)}
-                      className={showQuickReplies ? 'text-brand-400' : ''}
+                      onClick={() => setShowTemplates(!showTemplates)}
+                      className={showTemplates ? 'text-brand-400' : ''}
+                      title="Quick replies"
                     >
-                      <ChevronDown
-                        size={18}
-                        className={cn(
-                          'transition-transform',
-                          showQuickReplies && 'rotate-180'
-                        )}
-                      />
+                      <FileText size={18} />
                     </Button>
                   </div>
                   <div className="flex-1">
-                    <Textarea
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
+                    <textarea
+                      value={messageInput}
+                      onChange={(e) => setMessageInput(e.target.value)}
                       onKeyDown={handleKeyDown}
                       placeholder="Type a message..."
-                      className="min-h-[44px] max-h-32 resize-none"
+                      rows={1}
+                      className="w-full px-4 py-3 rounded-xl bg-surface-800 border border-white/[0.06] text-white placeholder:text-surface-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 resize-none min-h-[44px] max-h-32"
                     />
                   </div>
                   <Button
                     variant="primary"
                     size="icon"
                     onClick={handleSendMessage}
-                    disabled={!newMessage.trim()}
+                    disabled={!messageInput.trim() || sendMessage.isPending}
                   >
                     <Send size={18} />
                   </Button>
@@ -392,6 +453,51 @@ export default function MessagesPage() {
           )}
         </Card>
       </div>
+
+      {/* New Conversation Modal */}
+      <Modal isOpen={showNewConversation} onClose={() => setShowNewConversation(false)}>
+        <ModalHeader title="New Conversation" onClose={() => setShowNewConversation(false)} />
+        <ModalContent>
+          <div className="space-y-4">
+            <p className="text-sm text-surface-400">
+              Select a family to start a conversation:
+            </p>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {families?.map((family) => (
+                <button
+                  key={family.id}
+                  onClick={async () => {
+                    try {
+                      const conv = await createConversation.mutateAsync({
+                        family_id: family.id,
+                      });
+                      setSelectedConversationId(conv.id);
+                      setShowNewConversation(false);
+                      setShowMobileList(false);
+                    } catch (error) {
+                      console.error('Failed to create conversation:', error);
+                    }
+                  }}
+                  className="w-full p-3 rounded-lg bg-surface-800/50 hover:bg-surface-800 text-left transition-colors flex items-center gap-3"
+                >
+                  <Avatar name={family.name} size="sm" />
+                  <div>
+                    <p className="font-medium text-white">{family.name}</p>
+                    {family.email && (
+                      <p className="text-xs text-surface-500">{family.email}</p>
+                    )}
+                  </div>
+                </button>
+              ))}
+              {(!families || families.length === 0) && (
+                <p className="text-center text-surface-500 py-4">
+                  No families available
+                </p>
+              )}
+            </div>
+          </div>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }
