@@ -1,116 +1,61 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
-import { StatusBadge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { formatDate } from '@/lib/utils';
+import { usePetParentReports } from '@/hooks';
 import {
   FileText,
   Calendar,
   Search,
-  Filter,
   ChevronRight,
   Download,
   Star,
   TrendingUp,
   Image,
   MessageSquare,
+  Loader2,
 } from 'lucide-react';
-
-// Mock reports data
-const mockReports = [
-  {
-    id: '1',
-    dog: { id: 'a', name: 'Max', breed: 'German Shepherd', photo_url: null },
-    date: '2025-01-12',
-    trainer: 'Sarah Johnson',
-    summary: 'Great progress on leash walking! Max showed excellent focus during training sessions.',
-    highlights: [
-      'Mastered heel command at 90% accuracy',
-      'Reduced leash pulling by 50%',
-      'Successfully completed first off-leash recall',
-    ],
-    mood: 'Happy & Energetic',
-    appetite: 'Good',
-    has_photos: true,
-    photo_count: 4,
-    training_minutes: 45,
-    skills_practiced: ['Heel', 'Recall', 'Stay'],
-  },
-  {
-    id: '2',
-    dog: { id: 'b', name: 'Bella', breed: 'Golden Retriever', photo_url: null },
-    date: '2025-01-12',
-    trainer: 'John Smith',
-    summary: 'Bella is making steady progress with basic commands. Working on building focus.',
-    highlights: [
-      'Improved sit-stay duration to 30 seconds',
-      'Good socialization during group play',
-    ],
-    mood: 'Playful',
-    appetite: 'Good',
-    has_photos: true,
-    photo_count: 2,
-    training_minutes: 30,
-    skills_practiced: ['Sit', 'Stay', 'Name Recognition'],
-  },
-  {
-    id: '3',
-    dog: { id: 'a', name: 'Max', breed: 'German Shepherd', photo_url: null },
-    date: '2025-01-11',
-    trainer: 'Sarah Johnson',
-    summary: 'Focused on recall training today. Max is showing great improvement.',
-    highlights: [
-      'Recall success rate improved to 80%',
-      'Good impulse control exercises',
-    ],
-    mood: 'Focused',
-    appetite: 'Good',
-    has_photos: true,
-    photo_count: 3,
-    training_minutes: 50,
-    skills_practiced: ['Recall', 'Wait', 'Leave It'],
-  },
-  {
-    id: '4',
-    dog: { id: 'a', name: 'Max', breed: 'German Shepherd', photo_url: null },
-    date: '2025-01-10',
-    trainer: 'Sarah Johnson',
-    summary: 'Max earned his Sit Master badge today! Excellent training session.',
-    highlights: [
-      'Earned Sit Master badge (Gold)',
-      'Sit command at 95% accuracy',
-      'Duration hold improved to 2 minutes',
-    ],
-    mood: 'Excellent',
-    appetite: 'Good',
-    has_photos: true,
-    photo_count: 5,
-    training_minutes: 60,
-    skills_practiced: ['Sit', 'Down', 'Place'],
-    badge_earned: { name: 'Sit Master', tier: 'gold' },
-  },
-];
 
 export default function PetParentReportsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDog, setSelectedDog] = useState<string | 'all'>('all');
 
-  const dogs = Array.from(
-    new Map(mockReports.map((r) => [r.dog.id, r.dog])).values()
-  );
+  const { data: reports, isLoading } = usePetParentReports();
 
-  const filteredReports = mockReports.filter((report) => {
-    const matchesSearch =
-      report.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      report.dog.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDog = selectedDog === 'all' || report.dog.id === selectedDog;
-    return matchesSearch && matchesDog;
-  });
+  const dogs = useMemo(() => {
+    if (!reports) return [];
+    return Array.from(
+      new Map(reports.map((r) => [r.dog.id, r.dog])).values()
+    );
+  }, [reports]);
+
+  const filteredReports = useMemo(() => {
+    if (!reports) return [];
+
+    return reports.filter((report) => {
+      const matchesSearch =
+        report.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        report.dog.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesDog = selectedDog === 'all' || report.dog.id === selectedDog;
+      return matchesSearch && matchesDog;
+    });
+  }, [reports, searchQuery, selectedDog]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+          <p className="text-surface-400">Loading reports...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -161,7 +106,7 @@ export default function PetParentReportsPage() {
             <div className="flex flex-col lg:flex-row gap-4 p-4">
               {/* Dog Info & Date */}
               <div className="flex items-start gap-4 lg:w-64">
-                <Avatar name={report.dog.name} size="lg" />
+                <Avatar name={report.dog.name} size="lg" src={report.dog.photo_url} />
                 <div>
                   <h3 className="font-semibold text-white">{report.dog.name}</h3>
                   <p className="text-sm text-surface-500">{report.dog.breed}</p>
@@ -249,7 +194,7 @@ export default function PetParentReportsPage() {
           <FileText size={48} className="mx-auto text-surface-600 mb-4" />
           <h3 className="text-lg font-medium text-white mb-2">No reports found</h3>
           <p className="text-surface-400">
-            {searchQuery
+            {searchQuery || selectedDog !== 'all'
               ? 'Try adjusting your search or filters'
               : 'Daily reports will appear here once available'}
           </p>

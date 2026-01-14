@@ -1,103 +1,33 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout';
-import { Card, CardContent } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
 import { StatusBadge } from '@/components/ui/Badge';
 import { formatDate } from '@/lib/utils';
+import { usePrograms, useFamilies } from '@/hooks';
 import {
   Plus,
   Search,
-  Filter,
   Calendar,
-  Clock,
   Dog,
   User,
   ChevronRight,
-  MoreVertical,
-  Play,
-  Pause,
-  CheckCircle,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
-
-// Mock programs data
-const mockPrograms = [
-  {
-    id: '1',
-    dog: { id: 'a', name: 'Max', breed: 'German Shepherd', photo_url: null },
-    family: { id: 'f1', name: 'Anderson Family' },
-    type: 'board_train',
-    name: '3-Week Board & Train',
-    status: 'active',
-    start_date: '2025-01-06',
-    end_date: '2025-01-27',
-    progress: 45,
-    trainer: { id: 't1', name: 'Sarah Johnson' },
-    price: 2500,
-  },
-  {
-    id: '2',
-    dog: { id: 'b', name: 'Bella', breed: 'Golden Retriever', photo_url: null },
-    family: { id: 'f1', name: 'Anderson Family' },
-    type: 'day_train',
-    name: 'Puppy Foundations',
-    status: 'active',
-    start_date: '2025-01-06',
-    end_date: '2025-02-14',
-    progress: 25,
-    trainer: { id: 't2', name: 'John Smith' },
-    price: 1800,
-  },
-  {
-    id: '3',
-    dog: { id: 'c', name: 'Luna', breed: 'Border Collie', photo_url: null },
-    family: { id: 'f2', name: 'Martinez Family' },
-    type: 'board_train',
-    name: '2-Week Board & Train',
-    status: 'active',
-    start_date: '2025-01-08',
-    end_date: '2025-01-22',
-    progress: 60,
-    trainer: { id: 't1', name: 'Sarah Johnson' },
-    price: 1800,
-  },
-  {
-    id: '4',
-    dog: { id: 'd', name: 'Rocky', breed: 'Rottweiler', photo_url: null },
-    family: { id: 'f2', name: 'Martinez Family' },
-    type: 'private_lesson',
-    name: 'Behavioral Consultation',
-    status: 'scheduled',
-    start_date: '2025-01-15',
-    end_date: '2025-01-15',
-    progress: 0,
-    trainer: { id: 't1', name: 'Sarah Johnson' },
-    price: 150,
-  },
-  {
-    id: '5',
-    dog: { id: 'a', name: 'Max', breed: 'German Shepherd', photo_url: null },
-    family: { id: 'f1', name: 'Anderson Family' },
-    type: 'private_lesson',
-    name: 'Initial Evaluation',
-    status: 'completed',
-    start_date: '2024-12-20',
-    end_date: '2024-12-20',
-    progress: 100,
-    trainer: { id: 't1', name: 'Sarah Johnson' },
-    price: 100,
-  },
-];
+import { differenceInDays, parseISO, isAfter, isBefore } from 'date-fns';
 
 const programTypes = [
   { value: 'all', label: 'All Types' },
   { value: 'board_train', label: 'Board & Train' },
   { value: 'day_train', label: 'Day Training' },
   { value: 'private_lesson', label: 'Private Lessons' },
+  { value: 'group_class', label: 'Group Class' },
 ];
 
 const statusOptions = [
@@ -116,6 +46,8 @@ function getProgramTypeLabel(type: string): string {
       return 'Day Training';
     case 'private_lesson':
       return 'Private Lesson';
+    case 'group_class':
+      return 'Group Class';
     default:
       return type;
   }
@@ -136,23 +68,93 @@ function getStatusVariant(status: string): 'success' | 'warning' | 'default' | '
   }
 }
 
+function calculateProgress(startDate: string, endDate: string | null, status: string): number {
+  if (status !== 'active') {
+    return status === 'completed' ? 100 : 0;
+  }
+
+  if (!endDate) return 50; // If no end date, show 50%
+
+  const start = parseISO(startDate);
+  const end = parseISO(endDate);
+  const now = new Date();
+
+  if (isBefore(now, start)) return 0;
+  if (isAfter(now, end)) return 100;
+
+  const totalDays = differenceInDays(end, start);
+  const elapsedDays = differenceInDays(now, start);
+
+  if (totalDays <= 0) return 100;
+  return Math.round((elapsedDays / totalDays) * 100);
+}
+
 export default function ProgramsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const filteredPrograms = mockPrograms.filter((program) => {
-    const matchesSearch =
-      program.dog.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      program.family.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      program.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = typeFilter === 'all' || program.type === typeFilter;
-    const matchesStatus = statusFilter === 'all' || program.status === statusFilter;
-    return matchesSearch && matchesType && matchesStatus;
-  });
+  const { data: programs, isLoading, error, refetch } = usePrograms();
+  const { data: families } = useFamilies();
 
-  const activeCount = mockPrograms.filter((p) => p.status === 'active').length;
-  const scheduledCount = mockPrograms.filter((p) => p.status === 'scheduled').length;
+  // Create family lookup map
+  const familyMap = useMemo(() => {
+    const map = new Map<string, string>();
+    families?.forEach((family) => {
+      map.set(family.id, family.name);
+    });
+    return map;
+  }, [families]);
+
+  const filteredPrograms = useMemo(() => {
+    if (!programs) return [];
+
+    return programs.filter((program) => {
+      const dogName = program.dog?.name || '';
+      const familyName = program.dog?.family?.name || familyMap.get(program.dog?.family_id || '') || '';
+
+      const matchesSearch =
+        dogName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        familyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        program.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = typeFilter === 'all' || program.type === typeFilter;
+      const matchesStatus = statusFilter === 'all' || program.status === statusFilter;
+      return matchesSearch && matchesType && matchesStatus;
+    });
+  }, [programs, searchQuery, typeFilter, statusFilter, familyMap]);
+
+  const activeCount = programs?.filter((p) => p.status === 'active').length || 0;
+  const scheduledCount = programs?.filter((p) => p.status === 'scheduled').length || 0;
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+          <p className="text-surface-400">Loading programs...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <AlertCircle className="h-12 w-12 text-red-500" />
+          <h2 className="text-xl font-semibold text-white">Failed to load programs</h2>
+          <p className="text-surface-400 max-w-md">
+            {error instanceof Error ? error.message : 'An unexpected error occurred'}
+          </p>
+          <Button variant="primary" onClick={() => refetch()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -208,99 +210,97 @@ export default function ProgramsPage() {
 
       {/* Programs List */}
       <div className="space-y-4">
-        {filteredPrograms.map((program) => (
-          <Card
-            key={program.id}
-            className="hover:border-brand-500/30 transition-all"
-            variant="bordered"
-          >
-            <div className="flex flex-col lg:flex-row gap-4 p-4">
-              {/* Dog & Program Info */}
-              <div className="flex items-start gap-4 flex-1">
-                <Avatar name={program.dog.name} size="lg" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Link
-                      href={`/programs/${program.id}`}
-                      className="text-lg font-semibold text-white hover:text-brand-400 transition-colors"
-                    >
-                      {program.name}
-                    </Link>
-                    <StatusBadge variant={getStatusVariant(program.status)} size="xs">
-                      {program.status}
-                    </StatusBadge>
+        {filteredPrograms.map((program) => {
+          const progress = calculateProgress(program.start_date, program.end_date, program.status);
+          const dogName = program.dog?.name || 'Unknown Dog';
+          const familyName = program.dog?.family?.name || 'Unknown Family';
+          const trainerName = program.trainer?.name || 'Unassigned';
+
+          return (
+            <Card
+              key={program.id}
+              className="hover:border-brand-500/30 transition-all"
+              variant="bordered"
+            >
+              <div className="flex flex-col lg:flex-row gap-4 p-4">
+                {/* Dog & Program Info */}
+                <div className="flex items-start gap-4 flex-1">
+                  <Avatar name={dogName} size="lg" src={program.dog?.photo_url} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Link
+                        href={`/programs/${program.id}`}
+                        className="text-lg font-semibold text-white hover:text-brand-400 transition-colors"
+                      >
+                        {program.name}
+                      </Link>
+                      <StatusBadge variant={getStatusVariant(program.status)} size="xs">
+                        {program.status}
+                      </StatusBadge>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-surface-400">
+                      <Link
+                        href={`/dogs/${program.dog_id}`}
+                        className="flex items-center gap-1 hover:text-white"
+                      >
+                        <Dog size={14} />
+                        {dogName}
+                      </Link>
+                      <span className="flex items-center gap-1">
+                        <User size={14} />
+                        {familyName}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Calendar size={14} />
+                        {formatDate(program.start_date)}
+                        {program.end_date && ` - ${formatDate(program.end_date)}`}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-surface-400">
-                    <Link
-                      href={`/dogs/${program.dog.id}`}
-                      className="flex items-center gap-1 hover:text-white"
-                    >
-                      <Dog size={14} />
-                      {program.dog.name}
-                    </Link>
-                    <Link
-                      href={`/families/${program.family.id}`}
-                      className="flex items-center gap-1 hover:text-white"
-                    >
-                      <User size={14} />
-                      {program.family.name}
-                    </Link>
-                    <span className="flex items-center gap-1">
-                      <Calendar size={14} />
-                      {formatDate(program.start_date)} - {formatDate(program.end_date)}
+                </div>
+
+                {/* Progress & Actions */}
+                <div className="flex items-center gap-6">
+                  {/* Progress */}
+                  {program.status === 'active' && (
+                    <div className="w-32">
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <span className="text-surface-500">Progress</span>
+                        <span className="text-brand-400">{progress}%</span>
+                      </div>
+                      <div className="h-2 bg-surface-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-brand-500 rounded-full transition-all"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Type Badge */}
+                  <div className="hidden sm:block">
+                    <span className="px-3 py-1 rounded-lg bg-surface-800 text-sm text-surface-300">
+                      {getProgramTypeLabel(program.type)}
                     </span>
                   </div>
-                </div>
-              </div>
 
-              {/* Progress & Actions */}
-              <div className="flex items-center gap-6">
-                {/* Progress */}
-                {program.status === 'active' && (
-                  <div className="w-32">
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-surface-500">Progress</span>
-                      <span className="text-brand-400">{program.progress}%</span>
-                    </div>
-                    <div className="h-2 bg-surface-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-brand-500 rounded-full"
-                        style={{ width: `${program.progress}%` }}
-                      />
-                    </div>
+                  {/* Trainer */}
+                  <div className="hidden md:flex items-center gap-2 text-sm text-surface-400">
+                    <Avatar name={trainerName} size="xs" src={program.trainer?.avatar_url} />
+                    {trainerName}
                   </div>
-                )}
 
-                {/* Type Badge */}
-                <div className="hidden sm:block">
-                  <span className="px-3 py-1 rounded-lg bg-surface-800 text-sm text-surface-300">
-                    {getProgramTypeLabel(program.type)}
-                  </span>
+                  {/* Actions */}
+                  <Link href={`/programs/${program.id}`}>
+                    <Button variant="ghost" size="icon-sm">
+                      <ChevronRight size={18} />
+                    </Button>
+                  </Link>
                 </div>
-
-                {/* Trainer */}
-                <div className="hidden md:flex items-center gap-2 text-sm text-surface-400">
-                  <Avatar name={program.trainer.name} size="xs" />
-                  {program.trainer.name}
-                </div>
-
-                {/* Price */}
-                <div className="text-right">
-                  <p className="text-lg font-semibold text-white">
-                    ${program.price.toLocaleString()}
-                  </p>
-                </div>
-
-                {/* Actions */}
-                <Link href={`/programs/${program.id}`}>
-                  <Button variant="ghost" size="icon-sm">
-                    <ChevronRight size={18} />
-                  </Button>
-                </Link>
               </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
 
       {/* Empty State */}

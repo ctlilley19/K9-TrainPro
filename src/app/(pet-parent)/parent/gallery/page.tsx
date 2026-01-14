@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
 import { formatDate } from '@/lib/utils';
+import { usePetParentGallery } from '@/hooks';
 import {
   Image,
   Download,
@@ -15,167 +15,55 @@ import {
   Calendar,
   Dog,
   Play,
-  Filter,
+  Loader2,
 } from 'lucide-react';
-
-// Mock gallery data
-const mockPhotos = [
-  {
-    id: '1',
-    url: null,
-    dog: { id: 'a', name: 'Max' },
-    caption: 'Training session - heel work',
-    date: '2025-01-12',
-    is_highlight: true,
-    activity_type: 'training',
-  },
-  {
-    id: '2',
-    url: null,
-    dog: { id: 'a', name: 'Max' },
-    caption: 'Recall practice at 30ft',
-    date: '2025-01-12',
-    is_highlight: true,
-    activity_type: 'training',
-  },
-  {
-    id: '3',
-    url: null,
-    dog: { id: 'b', name: 'Bella' },
-    caption: 'Learning sit command',
-    date: '2025-01-12',
-    is_highlight: false,
-    activity_type: 'training',
-  },
-  {
-    id: '4',
-    url: null,
-    dog: { id: 'a', name: 'Max' },
-    caption: 'Play time in the yard',
-    date: '2025-01-11',
-    is_highlight: false,
-    activity_type: 'play',
-  },
-  {
-    id: '5',
-    url: null,
-    dog: { id: 'b', name: 'Bella' },
-    caption: 'Group socialization',
-    date: '2025-01-11',
-    is_highlight: true,
-    activity_type: 'play',
-  },
-  {
-    id: '6',
-    url: null,
-    dog: { id: 'a', name: 'Max' },
-    caption: 'Earned Sit Master badge!',
-    date: '2025-01-10',
-    is_highlight: true,
-    activity_type: 'achievement',
-  },
-  {
-    id: '7',
-    url: null,
-    dog: { id: 'a', name: 'Max' },
-    caption: 'Good boy resting',
-    date: '2025-01-10',
-    is_highlight: false,
-    activity_type: 'rest',
-  },
-  {
-    id: '8',
-    url: null,
-    dog: { id: 'b', name: 'Bella' },
-    caption: 'First week completed!',
-    date: '2025-01-10',
-    is_highlight: true,
-    activity_type: 'achievement',
-  },
-  {
-    id: '9',
-    url: null,
-    dog: { id: 'a', name: 'Max' },
-    caption: 'Leash walking practice',
-    date: '2025-01-09',
-    is_highlight: false,
-    activity_type: 'training',
-  },
-  {
-    id: '10',
-    url: null,
-    dog: { id: 'b', name: 'Bella' },
-    caption: 'Meeting new friends',
-    date: '2025-01-09',
-    is_highlight: false,
-    activity_type: 'play',
-  },
-  {
-    id: '11',
-    url: null,
-    dog: { id: 'a', name: 'Max' },
-    caption: 'Morning training session',
-    date: '2025-01-08',
-    is_highlight: false,
-    activity_type: 'training',
-  },
-  {
-    id: '12',
-    url: null,
-    dog: { id: 'a', name: 'Max' },
-    caption: 'Arrival day!',
-    date: '2025-01-06',
-    is_highlight: true,
-    activity_type: 'milestone',
-  },
-];
-
-const mockVideos = [
-  {
-    id: 'v1',
-    url: null,
-    dog: { id: 'a', name: 'Max' },
-    caption: 'Heel training session',
-    date: '2025-01-12',
-    duration: '0:45',
-  },
-  {
-    id: 'v2',
-    url: null,
-    dog: { id: 'a', name: 'Max' },
-    caption: 'First recall success',
-    date: '2025-01-11',
-    duration: '0:30',
-  },
-];
 
 type FilterType = 'all' | 'photos' | 'videos' | 'highlights';
 type DogFilter = 'all' | string;
 
 export default function PetParentGalleryPage() {
-  const [selectedPhoto, setSelectedPhoto] = useState<typeof mockPhotos[0] | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<{
+    id: string;
+    url: string | null;
+    dog: { id: string; name: string };
+    caption: string;
+    date: string;
+    is_highlight: boolean;
+    activity_type: string;
+  } | null>(null);
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [dogFilter, setDogFilter] = useState<DogFilter>('all');
 
-  const dogs = Array.from(new Map(mockPhotos.map((p) => [p.dog.id, p.dog])).values());
+  const { data: gallery, isLoading } = usePetParentGallery();
 
-  const filteredPhotos = mockPhotos.filter((photo) => {
-    const matchesDog = dogFilter === 'all' || photo.dog.id === dogFilter;
-    const matchesType =
-      filterType === 'all' ||
-      filterType === 'photos' ||
-      (filterType === 'highlights' && photo.is_highlight);
-    return matchesDog && matchesType;
-  });
+  const photos = gallery?.photos || [];
+  const videos = gallery?.videos || [];
 
-  const groupedPhotos = filteredPhotos.reduce((acc, photo) => {
-    const date = photo.date;
-    if (!acc[date]) {
-      acc[date] = [];
-    }
-    acc[date].push(photo);
-    return acc;
-  }, {} as Record<string, typeof mockPhotos>);
+  const dogs = useMemo(() => {
+    return Array.from(new Map(photos.map((p) => [p.dog.id, p.dog])).values());
+  }, [photos]);
+
+  const filteredPhotos = useMemo(() => {
+    return photos.filter((photo) => {
+      const matchesDog = dogFilter === 'all' || photo.dog.id === dogFilter;
+      const matchesType =
+        filterType === 'all' ||
+        filterType === 'photos' ||
+        (filterType === 'highlights' && photo.is_highlight);
+      return matchesDog && matchesType;
+    });
+  }, [photos, dogFilter, filterType]);
+
+  const groupedPhotos = useMemo(() => {
+    return filteredPhotos.reduce((acc, photo) => {
+      const date = photo.date;
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+      acc[date].push(photo);
+      return acc;
+    }, {} as Record<string, typeof filteredPhotos>);
+  }, [filteredPhotos]);
 
   const currentIndex = selectedPhoto
     ? filteredPhotos.findIndex((p) => p.id === selectedPhoto.id)
@@ -192,6 +80,17 @@ export default function PetParentGalleryPage() {
       setSelectedPhoto(filteredPhotos[currentIndex + 1]);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+          <p className="text-surface-400">Loading gallery...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -244,14 +143,14 @@ export default function PetParentGalleryPage() {
       </Card>
 
       {/* Videos Section */}
-      {(filterType === 'all' || filterType === 'videos') && mockVideos.length > 0 && (
+      {(filterType === 'all' || filterType === 'videos') && videos.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <Play size={20} className="text-brand-400" />
-            Videos ({mockVideos.length})
+            Videos ({videos.length})
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {mockVideos.map((video) => (
+            {videos.map((video) => (
               <div
                 key={video.id}
                 className="aspect-video rounded-xl bg-surface-800 overflow-hidden relative group cursor-pointer"
@@ -277,17 +176,17 @@ export default function PetParentGalleryPage() {
         <div className="space-y-8">
           {Object.entries(groupedPhotos)
             .sort(([a], [b]) => new Date(b).getTime() - new Date(a).getTime())
-            .map(([date, photos]) => (
+            .map(([date, datePhotos]) => (
               <div key={date}>
                 <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                   <Calendar size={18} className="text-surface-500" />
                   {formatDate(date, 'EEEE, MMMM d, yyyy')}
                   <span className="text-sm font-normal text-surface-500">
-                    ({photos.length} photos)
+                    ({datePhotos.length} photos)
                   </span>
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {photos.map((photo) => (
+                  {datePhotos.map((photo) => (
                     <div
                       key={photo.id}
                       onClick={() => setSelectedPhoto(photo)}

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { StatusBadge, TierBadge } from '@/components/ui/Badge';
 import { formatDate } from '@/lib/utils';
+import { usePetParentDogs } from '@/hooks';
 import {
   Dog,
   Calendar,
@@ -13,80 +14,10 @@ import {
   TrendingUp,
   ChevronRight,
   Clock,
-  Heart,
-  Star,
   Shield,
+  Star,
+  Loader2,
 } from 'lucide-react';
-
-// Mock data
-const mockDogs = [
-  {
-    id: 'a',
-    name: 'Max',
-    breed: 'German Shepherd',
-    age: '2 years',
-    photo_url: null,
-    weight: 75,
-    gender: 'male',
-    program: {
-      name: '3-Week Board & Train',
-      type: 'board_train',
-      status: 'active',
-      start_date: '2025-01-06',
-      end_date: '2025-01-27',
-      progress: 45,
-      trainer: 'Sarah Johnson',
-    },
-    stats: {
-      badges_earned: 3,
-      skills_learned: 5,
-      training_hours: 12,
-      days_in_program: 7,
-    },
-    recent_badges: [
-      { id: '1', name: 'Sit Master', tier: 'gold', earned_at: '2025-01-10' },
-      { id: '2', name: 'Leash Walking', tier: 'silver', earned_at: '2025-01-08' },
-    ],
-    skills: [
-      { name: 'Sit', level: 4 },
-      { name: 'Stay', level: 3 },
-      { name: 'Come', level: 2 },
-      { name: 'Down', level: 3 },
-      { name: 'Heel', level: 2 },
-    ],
-  },
-  {
-    id: 'b',
-    name: 'Bella',
-    breed: 'Golden Retriever',
-    age: '1 year',
-    photo_url: null,
-    weight: 55,
-    gender: 'female',
-    program: {
-      name: 'Puppy Foundations',
-      type: 'day_train',
-      status: 'active',
-      start_date: '2025-01-06',
-      end_date: '2025-02-14',
-      progress: 25,
-      trainer: 'John Smith',
-    },
-    stats: {
-      badges_earned: 1,
-      skills_learned: 2,
-      training_hours: 4,
-      days_in_program: 7,
-    },
-    recent_badges: [
-      { id: '3', name: 'First Steps', tier: 'bronze', earned_at: '2025-01-07' },
-    ],
-    skills: [
-      { name: 'Sit', level: 2 },
-      { name: 'Name Recognition', level: 3 },
-    ],
-  },
-];
 
 function SkillBar({ level, maxLevel = 5 }: { level: number; maxLevel?: number }) {
   return (
@@ -104,6 +35,33 @@ function SkillBar({ level, maxLevel = 5 }: { level: number; maxLevel?: number })
 }
 
 export default function PetParentDogsPage() {
+  const { data: dogs, isLoading } = usePetParentDogs();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+          <p className="text-surface-400">Loading your dogs...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!dogs || dogs.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <Dog className="h-12 w-12 text-surface-600" />
+          <h2 className="text-xl font-semibold text-white">No dogs found</h2>
+          <p className="text-surface-400 max-w-md">
+            You don't have any dogs enrolled in programs yet.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -116,14 +74,14 @@ export default function PetParentDogsPage() {
 
       {/* Dogs List */}
       <div className="space-y-6">
-        {mockDogs.map((dog) => (
+        {dogs.map((dog) => (
           <Card key={dog.id} className="overflow-hidden">
             {/* Dog Profile Header */}
             <div className="bg-gradient-to-r from-brand-500/20 via-purple-500/10 to-surface-900 p-6">
               <div className="flex flex-col md:flex-row md:items-center gap-6">
                 {/* Avatar and Basic Info */}
                 <div className="flex items-center gap-4">
-                  <Avatar name={dog.name} size="xl" />
+                  <Avatar name={dog.name} size="xl" src={dog.photo_url} />
                   <div>
                     <h2 className="text-2xl font-bold text-white">{dog.name}</h2>
                     <p className="text-surface-400">{dog.breed}</p>
@@ -179,30 +137,36 @@ export default function PetParentDogsPage() {
                     <Shield size={14} />
                     Current Program
                   </h3>
-                  <div className="p-4 rounded-xl bg-surface-800/50 border border-surface-700">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-white">{dog.program.name}</span>
-                      <StatusBadge variant="success" size="xs">Active</StatusBadge>
-                    </div>
-                    <p className="text-sm text-surface-500 mb-3">
-                      Trainer: {dog.program.trainer}
-                    </p>
-                    <div className="mb-2">
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-surface-400">Progress</span>
-                        <span className="text-brand-400">{dog.program.progress}%</span>
+                  {dog.program ? (
+                    <div className="p-4 rounded-xl bg-surface-800/50 border border-surface-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-white">{dog.program.name}</span>
+                        <StatusBadge variant="success" size="xs">Active</StatusBadge>
                       </div>
-                      <div className="h-2 bg-surface-700 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-brand-500 rounded-full"
-                          style={{ width: `${dog.program.progress}%` }}
-                        />
+                      <p className="text-sm text-surface-500 mb-3">
+                        Trainer: {dog.program.trainer}
+                      </p>
+                      <div className="mb-2">
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-surface-400">Progress</span>
+                          <span className="text-brand-400">{dog.program.progress}%</span>
+                        </div>
+                        <div className="h-2 bg-surface-700 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-brand-500 rounded-full"
+                            style={{ width: `${dog.program.progress}%` }}
+                          />
+                        </div>
                       </div>
+                      <p className="text-xs text-surface-500">
+                        {formatDate(dog.program.start_date)} - {formatDate(dog.program.end_date)}
+                      </p>
                     </div>
-                    <p className="text-xs text-surface-500">
-                      {formatDate(dog.program.start_date)} - {formatDate(dog.program.end_date)}
-                    </p>
-                  </div>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-surface-800/50 text-center">
+                      <p className="text-sm text-surface-500">No active program</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Recent Badges */}
@@ -212,13 +176,13 @@ export default function PetParentDogsPage() {
                     Recent Badges
                   </h3>
                   <div className="space-y-2">
-                    {dog.recent_badges.length > 0 ? (
+                    {dog.recent_badges && dog.recent_badges.length > 0 ? (
                       dog.recent_badges.map((badge) => (
                         <div
                           key={badge.id}
                           className="flex items-center gap-3 p-3 rounded-xl bg-surface-800/50"
                         >
-                          <TierBadge tier={badge.tier as any} size="sm">
+                          <TierBadge tier={badge.tier as 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond'} size="sm">
                             <Star size={12} />
                           </TierBadge>
                           <div className="flex-1">
@@ -244,7 +208,7 @@ export default function PetParentDogsPage() {
                     Skills Progress
                   </h3>
                   <div className="space-y-3">
-                    {dog.skills.length > 0 ? (
+                    {dog.skills && dog.skills.length > 0 ? (
                       dog.skills.map((skill) => (
                         <div
                           key={skill.name}

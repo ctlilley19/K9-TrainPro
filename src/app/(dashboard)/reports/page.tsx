@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
@@ -9,104 +9,89 @@ import { Input } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
 import { StatusBadge } from '@/components/ui/Badge';
 import { formatDate } from '@/lib/utils';
+import { useReports, useDogsNeedingReports, useFamilies } from '@/hooks';
 import {
   FileText,
   Plus,
   Search,
-  Filter,
   Calendar,
-  Dog,
   User,
-  ChevronRight,
   Send,
   Clock,
-  CheckCircle,
   Edit,
   Eye,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
-
-// Mock reports data
-const mockReports = [
-  {
-    id: '1',
-    dog: { id: 'a', name: 'Max', breed: 'German Shepherd', photo_url: null },
-    family: { id: 'f1', name: 'Anderson Family', email: 'anderson@email.com' },
-    date: '2025-01-13',
-    status: 'draft',
-    trainer: 'Sarah Johnson',
-    created_at: '2025-01-13T10:00:00Z',
-    sent_at: null,
-  },
-  {
-    id: '2',
-    dog: { id: 'b', name: 'Bella', breed: 'Golden Retriever', photo_url: null },
-    family: { id: 'f1', name: 'Anderson Family', email: 'anderson@email.com' },
-    date: '2025-01-13',
-    status: 'draft',
-    trainer: 'John Smith',
-    created_at: '2025-01-13T09:30:00Z',
-    sent_at: null,
-  },
-  {
-    id: '3',
-    dog: { id: 'a', name: 'Max', breed: 'German Shepherd', photo_url: null },
-    family: { id: 'f1', name: 'Anderson Family', email: 'anderson@email.com' },
-    date: '2025-01-12',
-    status: 'sent',
-    trainer: 'Sarah Johnson',
-    created_at: '2025-01-12T17:00:00Z',
-    sent_at: '2025-01-12T17:30:00Z',
-  },
-  {
-    id: '4',
-    dog: { id: 'c', name: 'Luna', breed: 'Border Collie', photo_url: null },
-    family: { id: 'f2', name: 'Martinez Family', email: 'martinez@email.com' },
-    date: '2025-01-12',
-    status: 'sent',
-    trainer: 'Sarah Johnson',
-    created_at: '2025-01-12T16:45:00Z',
-    sent_at: '2025-01-12T17:00:00Z',
-  },
-  {
-    id: '5',
-    dog: { id: 'b', name: 'Bella', breed: 'Golden Retriever', photo_url: null },
-    family: { id: 'f1', name: 'Anderson Family', email: 'anderson@email.com' },
-    date: '2025-01-12',
-    status: 'sent',
-    trainer: 'John Smith',
-    created_at: '2025-01-12T16:30:00Z',
-    sent_at: '2025-01-12T17:15:00Z',
-  },
-];
-
-// Dogs that need reports today
-const dogsNeedingReports = [
-  { id: 'c', name: 'Luna', breed: 'Border Collie', photo_url: null, family: 'Martinez Family' },
-  { id: 'd', name: 'Rocky', breed: 'Rottweiler', photo_url: null, family: 'Martinez Family' },
-];
 
 export default function ReportsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'sent'>('all');
   const [dateFilter, setDateFilter] = useState('');
 
-  const filteredReports = mockReports.filter((report) => {
-    const matchesSearch =
-      report.dog.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      report.family.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || report.status === statusFilter;
-    const matchesDate = !dateFilter || report.date === dateFilter;
-    return matchesSearch && matchesStatus && matchesDate;
-  });
+  const { data: reports, isLoading, error, refetch } = useReports();
+  const { data: dogsNeedingReports } = useDogsNeedingReports();
+  const { data: families } = useFamilies();
 
-  const draftCount = mockReports.filter((r) => r.status === 'draft').length;
-  const todayCount = mockReports.filter((r) => r.date === '2025-01-13').length;
+  // Create family lookup map
+  const familyMap = useMemo(() => {
+    const map = new Map<string, string>();
+    families?.forEach((family) => {
+      map.set(family.id, family.name);
+    });
+    return map;
+  }, [families]);
+
+  const filteredReports = useMemo(() => {
+    if (!reports) return [];
+
+    return reports.filter((report) => {
+      const matchesSearch =
+        report.dog_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        report.family_name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || report.status === statusFilter;
+      const matchesDate = !dateFilter || report.date === dateFilter;
+      return matchesSearch && matchesStatus && matchesDate;
+    });
+  }, [reports, searchQuery, statusFilter, dateFilter]);
+
+  const draftCount = reports?.filter((r) => r.status === 'draft').length || 0;
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+          <p className="text-surface-400">Loading reports...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <AlertCircle className="h-12 w-12 text-red-500" />
+          <h2 className="text-xl font-semibold text-white">Failed to load reports</h2>
+          <p className="text-surface-400 max-w-md">
+            {error instanceof Error ? error.message : 'An unexpected error occurred'}
+          </p>
+          <Button variant="primary" onClick={() => refetch()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
       <PageHeader
         title="Daily Reports"
-        description={`${draftCount} drafts, ${dogsNeedingReports.length} dogs need reports today`}
+        description={`${draftCount} drafts, ${dogsNeedingReports?.length || 0} dogs need reports today`}
         action={
           <Link href="/reports/new">
             <Button variant="primary" leftIcon={<Plus size={18} />}>
@@ -117,7 +102,7 @@ export default function ReportsPage() {
       />
 
       {/* Dogs Needing Reports */}
-      {dogsNeedingReports.length > 0 && (
+      {dogsNeedingReports && dogsNeedingReports.length > 0 && (
         <Card className="mb-6 border-yellow-500/30 bg-yellow-500/5">
           <CardHeader
             title={
@@ -135,10 +120,12 @@ export default function ReportsPage() {
                   href={`/reports/new?dog=${dog.id}`}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-800/50 hover:bg-surface-800 border border-surface-700 hover:border-yellow-500/50 transition-all"
                 >
-                  <Avatar name={dog.name} size="sm" />
+                  <Avatar name={dog.name} size="sm" src={dog.photo_url} />
                   <div>
                     <p className="font-medium text-white">{dog.name}</p>
-                    <p className="text-xs text-surface-500">{dog.family}</p>
+                    <p className="text-xs text-surface-500">
+                      {familyMap.get(dog.family_id) || 'Unknown Family'}
+                    </p>
                   </div>
                   <Plus size={16} className="text-yellow-400 ml-2" />
                 </Link>
@@ -190,10 +177,10 @@ export default function ReportsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4">
               {/* Dog & Date */}
               <div className="flex items-center gap-4">
-                <Avatar name={report.dog.name} size="md" />
+                <Avatar name={report.dog_name} size="md" src={report.dog_photo_url} />
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-white">{report.dog.name}</h3>
+                    <h3 className="font-semibold text-white">{report.dog_name}</h3>
                     <StatusBadge
                       variant={report.status === 'sent' ? 'success' : 'warning'}
                       size="xs"
@@ -208,7 +195,7 @@ export default function ReportsPage() {
                     </span>
                     <span className="flex items-center gap-1">
                       <User size={14} />
-                      {report.family.name}
+                      {report.family_name}
                     </span>
                   </div>
                 </div>
@@ -216,7 +203,7 @@ export default function ReportsPage() {
 
               {/* Trainer & Actions */}
               <div className="flex items-center gap-4">
-                <span className="text-sm text-surface-500">{report.trainer}</span>
+                <span className="text-sm text-surface-500">{report.trainer_name}</span>
 
                 {report.status === 'draft' ? (
                   <div className="flex gap-2">
@@ -231,9 +218,11 @@ export default function ReportsPage() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-surface-500">
-                      Sent {formatDate(report.sent_at!, 'h:mm a')}
-                    </span>
+                    {report.sent_at && (
+                      <span className="text-xs text-surface-500">
+                        Sent {formatDate(report.sent_at, 'h:mm a')}
+                      </span>
+                    )}
                     <Link href={`/reports/${report.id}`}>
                       <Button variant="ghost" size="sm" leftIcon={<Eye size={14} />}>
                         View

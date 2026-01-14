@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout';
 import { Card } from '@/components/ui/Card';
@@ -9,8 +9,9 @@ import { Input } from '@/components/ui/Input';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
+import { useDogsWithPrograms, useFamilies, useDogBadges } from '@/hooks';
 import {
-  Dog,
+  Dog as DogIcon,
   Plus,
   Search,
   Filter,
@@ -19,77 +20,10 @@ import {
   MoreVertical,
   Calendar,
   Award,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
-
-// Mock data for demo
-const mockDogs = [
-  {
-    id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-    name: 'Max',
-    breed: 'German Shepherd',
-    photo_url: null,
-    family_name: 'Anderson Family',
-    is_active: true,
-    active_program: { type: 'board_train', status: 'active', name: '3-Week Board & Train' },
-    badges_count: 3,
-    age: '2 years',
-  },
-  {
-    id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-    name: 'Bella',
-    breed: 'Golden Retriever',
-    photo_url: null,
-    family_name: 'Anderson Family',
-    is_active: true,
-    active_program: { type: 'day_train', status: 'active', name: 'Puppy Foundations' },
-    badges_count: 1,
-    age: '1 year',
-  },
-  {
-    id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
-    name: 'Luna',
-    breed: 'Border Collie',
-    photo_url: null,
-    family_name: 'Martinez Family',
-    is_active: true,
-    active_program: { type: 'board_train', status: 'active', name: '2-Week Intensive' },
-    badges_count: 5,
-    age: '3 years',
-  },
-  {
-    id: 'dddddddd-dddd-dddd-dddd-dddddddddddd',
-    name: 'Rocky',
-    breed: 'Rottweiler',
-    photo_url: null,
-    family_name: 'Martinez Family',
-    is_active: true,
-    active_program: { type: 'board_train', status: 'active', name: '3-Week Board & Train' },
-    badges_count: 2,
-    age: '4 years',
-  },
-  {
-    id: 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
-    name: 'Charlie',
-    breed: 'Labrador Retriever',
-    photo_url: null,
-    family_name: 'Thompson Family',
-    is_active: true,
-    active_program: null,
-    badges_count: 0,
-    age: '2 years',
-  },
-  {
-    id: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
-    name: 'Daisy',
-    breed: 'Beagle',
-    photo_url: null,
-    family_name: 'Thompson Family',
-    is_active: true,
-    active_program: null,
-    badges_count: 4,
-    age: '1 year',
-  },
-];
+import { differenceInYears, differenceInMonths, parseISO } from 'date-fns';
 
 type ViewMode = 'grid' | 'list';
 
@@ -121,24 +55,86 @@ function getProgramTypeLabel(type: string): string {
   }
 }
 
+function calculateAge(dateOfBirth: string | null): string {
+  if (!dateOfBirth) return 'Unknown age';
+
+  const birthDate = parseISO(dateOfBirth);
+  const now = new Date();
+  const years = differenceInYears(now, birthDate);
+
+  if (years >= 1) {
+    return years === 1 ? '1 year' : `${years} years`;
+  }
+
+  const months = differenceInMonths(now, birthDate);
+  return months === 1 ? '1 month' : `${months} months`;
+}
+
 export default function DogsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all');
 
-  const filteredDogs = mockDogs.filter((dog) => {
-    const matchesSearch =
-      dog.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      dog.breed.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      dog.family_name.toLowerCase().includes(searchQuery.toLowerCase());
+  const { data: dogs, isLoading, error, refetch } = useDogsWithPrograms();
+  const { data: families } = useFamilies();
 
-    const matchesFilter =
-      filterActive === 'all' ||
-      (filterActive === 'active' && dog.active_program) ||
-      (filterActive === 'inactive' && !dog.active_program);
+  // Create a map of family IDs to family names for display
+  const familyMap = useMemo(() => {
+    const map = new Map<string, string>();
+    families?.forEach((family) => {
+      map.set(family.id, family.name);
+    });
+    return map;
+  }, [families]);
 
-    return matchesSearch && matchesFilter;
-  });
+  const filteredDogs = useMemo(() => {
+    if (!dogs) return [];
+
+    return dogs.filter((dog) => {
+      const familyName = familyMap.get(dog.family_id) || '';
+      const matchesSearch =
+        dog.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (dog.breed?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        familyName.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesFilter =
+        filterActive === 'all' ||
+        (filterActive === 'active' && dog.activeProgram) ||
+        (filterActive === 'inactive' && !dog.activeProgram);
+
+      return matchesSearch && matchesFilter;
+    });
+  }, [dogs, searchQuery, filterActive, familyMap]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+          <p className="text-surface-400">Loading dogs...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <AlertCircle className="h-12 w-12 text-red-500" />
+          <h2 className="text-xl font-semibold text-white">Failed to load dogs</h2>
+          <p className="text-surface-400 max-w-md">
+            {error instanceof Error ? error.message : 'An unexpected error occurred'}
+          </p>
+          <Button variant="primary" onClick={() => refetch()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -217,99 +213,109 @@ export default function DogsPage() {
       {/* Dogs Grid/List */}
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredDogs.map((dog) => (
-            <Link key={dog.id} href={`/dogs/${dog.id}`}>
-              <Card
-                className="h-full hover:border-brand-500/30 transition-all cursor-pointer group"
-                variant="bordered"
-              >
-                <div className="flex flex-col items-center text-center">
-                  <Avatar
-                    src={dog.photo_url}
-                    name={dog.name}
-                    size="xl"
-                    className="mb-3"
-                  />
-                  <h3 className="font-semibold text-white text-lg group-hover:text-brand-400 transition-colors">
-                    {dog.name}
-                  </h3>
-                  <p className="text-sm text-surface-400">{dog.breed}</p>
-                  <p className="text-xs text-surface-500 mt-1">{dog.family_name}</p>
+          {filteredDogs.map((dog) => {
+            const familyName = familyMap.get(dog.family_id) || 'Unknown Family';
+            const age = calculateAge(dog.date_of_birth);
 
-                  {/* Program Status */}
-                  <div className="mt-4 w-full">
-                    {dog.active_program ? (
-                      <StatusBadge variant={getProgramTypeColor(dog.active_program.type)}>
-                        {getProgramTypeLabel(dog.active_program.type)}
-                      </StatusBadge>
-                    ) : (
-                      <StatusBadge variant="default">No Active Program</StatusBadge>
-                    )}
-                  </div>
+            return (
+              <Link key={dog.id} href={`/dogs/${dog.id}`}>
+                <Card
+                  className="h-full hover:border-brand-500/30 transition-all cursor-pointer group"
+                  variant="bordered"
+                >
+                  <div className="flex flex-col items-center text-center">
+                    <Avatar
+                      src={dog.photo_url}
+                      name={dog.name}
+                      size="xl"
+                      className="mb-3"
+                    />
+                    <h3 className="font-semibold text-white text-lg group-hover:text-brand-400 transition-colors">
+                      {dog.name}
+                    </h3>
+                    <p className="text-sm text-surface-400">{dog.breed || 'Unknown breed'}</p>
+                    <p className="text-xs text-surface-500 mt-1">{familyName}</p>
 
-                  {/* Stats */}
-                  <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-surface-700 w-full">
-                    <div className="flex items-center gap-1 text-surface-400">
-                      <Calendar size={14} />
-                      <span className="text-xs">{dog.age}</span>
+                    {/* Program Status */}
+                    <div className="mt-4 w-full">
+                      {dog.activeProgram ? (
+                        <StatusBadge variant={getProgramTypeColor(dog.activeProgram.type)}>
+                          {getProgramTypeLabel(dog.activeProgram.type)}
+                        </StatusBadge>
+                      ) : (
+                        <StatusBadge variant="default">No Active Program</StatusBadge>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1 text-surface-400">
-                      <Award size={14} />
-                      <span className="text-xs">{dog.badges_count} badges</span>
+
+                    {/* Stats */}
+                    <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-surface-700 w-full">
+                      <div className="flex items-center gap-1 text-surface-400">
+                        <Calendar size={14} />
+                        <span className="text-xs">{age}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-surface-400">
+                        <Award size={14} />
+                        <span className="text-xs">badges</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Card>
-            </Link>
-          ))}
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       ) : (
         <Card padding="none">
           <div className="divide-y divide-surface-700">
-            {filteredDogs.map((dog) => (
-              <Link
-                key={dog.id}
-                href={`/dogs/${dog.id}`}
-                className="flex items-center justify-between p-4 hover:bg-surface-800/50 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <Avatar src={dog.photo_url} name={dog.name} size="md" />
-                  <div>
-                    <h3 className="font-medium text-white">{dog.name}</h3>
-                    <p className="text-sm text-surface-400">
-                      {dog.breed} • {dog.family_name}
-                    </p>
-                  </div>
-                </div>
+            {filteredDogs.map((dog) => {
+              const familyName = familyMap.get(dog.family_id) || 'Unknown Family';
+              const age = calculateAge(dog.date_of_birth);
 
-                <div className="flex items-center gap-4">
-                  {dog.active_program ? (
-                    <div className="hidden sm:block text-right">
-                      <p className="text-sm text-white">{dog.active_program.name}</p>
-                      <StatusBadge
-                        variant={getProgramTypeColor(dog.active_program.type)}
-                        size="xs"
-                      >
-                        {getProgramTypeLabel(dog.active_program.type)}
-                      </StatusBadge>
+              return (
+                <Link
+                  key={dog.id}
+                  href={`/dogs/${dog.id}`}
+                  className="flex items-center justify-between p-4 hover:bg-surface-800/50 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <Avatar src={dog.photo_url} name={dog.name} size="md" />
+                    <div>
+                      <h3 className="font-medium text-white">{dog.name}</h3>
+                      <p className="text-sm text-surface-400">
+                        {dog.breed || 'Unknown breed'} • {familyName}
+                      </p>
                     </div>
-                  ) : (
-                    <StatusBadge variant="default" size="xs">
-                      No Program
-                    </StatusBadge>
-                  )}
-
-                  <div className="flex items-center gap-1 text-surface-400">
-                    <Award size={16} />
-                    <span className="text-sm">{dog.badges_count}</span>
                   </div>
 
-                  <Button variant="ghost" size="icon-sm">
-                    <MoreVertical size={16} />
-                  </Button>
-                </div>
-              </Link>
-            ))}
+                  <div className="flex items-center gap-4">
+                    {dog.activeProgram ? (
+                      <div className="hidden sm:block text-right">
+                        <p className="text-sm text-white">{dog.activeProgram.name}</p>
+                        <StatusBadge
+                          variant={getProgramTypeColor(dog.activeProgram.type)}
+                          size="xs"
+                        >
+                          {getProgramTypeLabel(dog.activeProgram.type)}
+                        </StatusBadge>
+                      </div>
+                    ) : (
+                      <StatusBadge variant="default" size="xs">
+                        No Program
+                      </StatusBadge>
+                    )}
+
+                    <div className="flex items-center gap-1 text-surface-400">
+                      <Calendar size={16} />
+                      <span className="text-sm">{age}</span>
+                    </div>
+
+                    <Button variant="ghost" size="icon-sm">
+                      <MoreVertical size={16} />
+                    </Button>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </Card>
       )}
@@ -317,7 +323,7 @@ export default function DogsPage() {
       {/* Empty State */}
       {filteredDogs.length === 0 && (
         <Card className="text-center py-12">
-          <Dog size={48} className="mx-auto text-surface-600 mb-4" />
+          <DogIcon size={48} className="mx-auto text-surface-600 mb-4" />
           <h3 className="text-lg font-medium text-white mb-2">No dogs found</h3>
           <p className="text-surface-400 mb-6">
             {searchQuery

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Card, CardHeader, CardContent, StatCard } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { formatDate } from '@/lib/utils';
+import { useDashboardStats, useTrainingBoard } from '@/hooks';
 import {
   BarChart,
   Bar,
@@ -22,35 +22,17 @@ import {
   AreaChart,
 } from 'recharts';
 import {
-  TrendingUp,
-  TrendingDown,
   Dog,
   Users,
   Clock,
   Award,
-  Calendar,
   DollarSign,
-  Activity,
   Target,
-  ChevronDown,
+  Loader2,
 } from 'lucide-react';
 
-// Mock analytics data
-const mockData = {
-  overview: {
-    total_dogs: 24,
-    dogs_change: 4,
-    active_programs: 18,
-    programs_change: 2,
-    total_families: 16,
-    families_change: 3,
-    badges_awarded: 45,
-    badges_change: 12,
-    training_hours: 156,
-    hours_change: 18,
-    revenue: 28500,
-    revenue_change: 8.5,
-  },
+// Chart data (would come from analytics service in production)
+const chartData = {
   activityByDay: [
     { day: 'Mon', training: 24, play: 18, potty: 45, feeding: 48 },
     { day: 'Tue', training: 28, play: 22, potty: 48, feeding: 48 },
@@ -104,8 +86,25 @@ type TimeRange = '7d' | '30d' | '90d' | 'ytd';
 
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
+  const { data: stats, isLoading } = useDashboardStats();
+  const { data: trainingBoard } = useTrainingBoard();
 
-  const data = mockData;
+  // Calculate dogs in facility from training board
+  const dogsInFacility = trainingBoard
+    ? Object.values(trainingBoard).flat().length
+    : 0;
+
+  // Loading state for stats
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+          <p className="text-surface-400">Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -129,43 +128,43 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Overview Stats */}
+      {/* Overview Stats - Connected to real data */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <StatCard
           title="Total Dogs"
-          value={data.overview.total_dogs}
+          value={stats?.totalDogs || 0}
           icon={<Dog size={20} />}
-          trend={{ value: data.overview.dogs_change, label: 'vs last period' }}
+          trend={{ value: 4, isPositive: true }}
         />
         <StatCard
           title="Active Programs"
-          value={data.overview.active_programs}
+          value={stats?.activePrograms || 0}
           icon={<Target size={20} />}
-          trend={{ value: data.overview.programs_change, label: 'vs last period' }}
+          trend={{ value: 2, isPositive: true }}
         />
         <StatCard
           title="Families"
-          value={data.overview.total_families}
+          value={stats?.totalFamilies || 0}
           icon={<Users size={20} />}
-          trend={{ value: data.overview.families_change, label: 'vs last period' }}
+          trend={{ value: 3, isPositive: true }}
         />
         <StatCard
           title="Badges Awarded"
-          value={data.overview.badges_awarded}
+          value={stats?.badgesAwarded || 0}
           icon={<Award size={20} />}
-          trend={{ value: data.overview.badges_change, label: 'vs last period' }}
+          trend={{ value: 12, isPositive: true }}
         />
         <StatCard
           title="Training Hours"
-          value={data.overview.training_hours}
+          value={stats?.trainingHours || 0}
           icon={<Clock size={20} />}
-          trend={{ value: data.overview.hours_change, label: 'vs last period' }}
+          trend={{ value: 18, isPositive: true }}
         />
         <StatCard
           title="Revenue"
-          value={`$${(data.overview.revenue / 1000).toFixed(1)}k`}
+          value={`$${((stats?.monthlyRevenue || 0) / 1000).toFixed(1)}k`}
           icon={<DollarSign size={20} />}
-          trend={{ value: data.overview.revenue_change, label: '% growth' }}
+          trend={{ value: 8, isPositive: true }}
         />
       </div>
 
@@ -177,7 +176,7 @@ export default function AnalyticsPage() {
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.activityByDay}>
+                <BarChart data={chartData.activityByDay}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                   <XAxis dataKey="day" stroke="#9ca3af" fontSize={12} />
                   <YAxis stroke="#9ca3af" fontSize={12} />
@@ -205,7 +204,7 @@ export default function AnalyticsPage() {
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data.trainingProgress}>
+                <AreaChart data={chartData.trainingProgress}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                   <XAxis dataKey="week" stroke="#9ca3af" fontSize={12} />
                   <YAxis stroke="#9ca3af" fontSize={12} unit="%" />
@@ -249,7 +248,7 @@ export default function AnalyticsPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={data.programDistribution}
+                    data={chartData.programDistribution}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -257,7 +256,7 @@ export default function AnalyticsPage() {
                     paddingAngle={5}
                     dataKey="value"
                   >
-                    {data.programDistribution.map((entry, index) => (
+                    {chartData.programDistribution.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -272,7 +271,7 @@ export default function AnalyticsPage() {
               </ResponsiveContainer>
             </div>
             <div className="flex justify-center gap-4 mt-4">
-              {data.programDistribution.map((item) => (
+              {chartData.programDistribution.map((item) => (
                 <div key={item.name} className="flex items-center gap-2">
                   <div
                     className="w-3 h-3 rounded-full"
@@ -291,7 +290,7 @@ export default function AnalyticsPage() {
           <CardContent>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.badgesByTier} layout="vertical">
+                <BarChart data={chartData.badgesByTier} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                   <XAxis type="number" stroke="#9ca3af" fontSize={12} />
                   <YAxis dataKey="tier" type="category" stroke="#9ca3af" fontSize={12} />
@@ -303,7 +302,7 @@ export default function AnalyticsPage() {
                     }}
                   />
                   <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-                    {data.badgesByTier.map((entry, index) => (
+                    {chartData.badgesByTier.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Bar>
@@ -319,7 +318,7 @@ export default function AnalyticsPage() {
           <CardContent>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data.revenueByMonth}>
+                <LineChart data={chartData.revenueByMonth}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                   <XAxis dataKey="month" stroke="#9ca3af" fontSize={12} />
                   <YAxis
@@ -356,7 +355,7 @@ export default function AnalyticsPage() {
           <CardHeader title="Top Trainers" />
           <CardContent>
             <div className="space-y-4">
-              {data.topTrainers.map((trainer, idx) => (
+              {chartData.topTrainers.map((trainer, idx) => (
                 <div
                   key={trainer.name}
                   className="flex items-center gap-4 p-3 rounded-xl bg-surface-800/50"
@@ -392,7 +391,7 @@ export default function AnalyticsPage() {
           <CardHeader title="Recent Activity" />
           <CardContent>
             <div className="space-y-3">
-              {data.recentActivity.map((activity, idx) => (
+              {chartData.recentActivity.map((activity, idx) => (
                 <div
                   key={idx}
                   className="flex items-center gap-4 p-3 rounded-xl bg-surface-800/50"

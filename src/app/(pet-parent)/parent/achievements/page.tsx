@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/Badge';
 import { formatDate } from '@/lib/utils';
+import { usePetParentAchievements } from '@/hooks';
 import {
   Award,
   Star,
@@ -16,7 +16,7 @@ import {
   Shield,
   Crown,
   Lock,
-  ChevronRight,
+  Loader2,
 } from 'lucide-react';
 
 // Badge tier configuration
@@ -26,121 +26,6 @@ const tierColors = {
   gold: 'from-yellow-500 to-yellow-300',
   platinum: 'from-cyan-400 to-cyan-200',
   diamond: 'from-purple-500 to-pink-400',
-};
-
-// Mock achievements data
-const mockAchievements = {
-  dogs: [
-    {
-      id: 'a',
-      name: 'Max',
-      photo_url: null,
-      badges: [
-        {
-          id: '1',
-          name: 'Sit Master',
-          tier: 'gold',
-          icon: 'star',
-          description: 'Mastered the sit command with 95% accuracy',
-          earned_at: '2025-01-10',
-          category: 'obedience',
-        },
-        {
-          id: '2',
-          name: 'Leash Walking Pro',
-          tier: 'silver',
-          icon: 'target',
-          description: 'Demonstrated excellent loose leash walking',
-          earned_at: '2025-01-08',
-          category: 'leash',
-        },
-        {
-          id: '3',
-          name: 'First Week Champion',
-          tier: 'bronze',
-          icon: 'trophy',
-          description: 'Completed the first week of training',
-          earned_at: '2025-01-13',
-          category: 'milestone',
-        },
-      ],
-      total_badges: 3,
-      next_badge: {
-        name: 'Recall Master',
-        tier: 'gold',
-        progress: 70,
-        description: 'Master recall command at 50ft distance',
-      },
-    },
-    {
-      id: 'b',
-      name: 'Bella',
-      photo_url: null,
-      badges: [
-        {
-          id: '4',
-          name: 'First Steps',
-          tier: 'bronze',
-          icon: 'heart',
-          description: 'Completed first training session',
-          earned_at: '2025-01-07',
-          category: 'milestone',
-        },
-      ],
-      total_badges: 1,
-      next_badge: {
-        name: 'Sit Star',
-        tier: 'silver',
-        progress: 45,
-        description: 'Master sit command with 80% accuracy',
-      },
-    },
-  ],
-  available_badges: [
-    {
-      name: 'Sit Master',
-      tiers: ['bronze', 'silver', 'gold', 'platinum', 'diamond'],
-      description: 'Master the sit command',
-      category: 'obedience',
-    },
-    {
-      name: 'Stay Champion',
-      tiers: ['bronze', 'silver', 'gold', 'platinum', 'diamond'],
-      description: 'Master the stay command',
-      category: 'obedience',
-    },
-    {
-      name: 'Recall Master',
-      tiers: ['bronze', 'silver', 'gold', 'platinum', 'diamond'],
-      description: 'Master the recall command',
-      category: 'obedience',
-    },
-    {
-      name: 'Leash Walking Pro',
-      tiers: ['bronze', 'silver', 'gold'],
-      description: 'Demonstrate excellent leash manners',
-      category: 'leash',
-    },
-    {
-      name: 'Social Butterfly',
-      tiers: ['bronze', 'silver', 'gold'],
-      description: 'Excel in socialization with other dogs',
-      category: 'social',
-    },
-    {
-      name: 'Calm & Collected',
-      tiers: ['bronze', 'silver', 'gold'],
-      description: 'Show excellent impulse control',
-      category: 'behavior',
-    },
-  ],
-  stats: {
-    total_badges: 4,
-    gold_badges: 1,
-    silver_badges: 1,
-    bronze_badges: 2,
-    categories_unlocked: 3,
-  },
 };
 
 const categoryIcons: Record<string, React.ReactNode> = {
@@ -169,15 +54,31 @@ function BadgeIcon({ icon, size = 20 }: { icon: string; size?: number }) {
 export default function PetParentAchievementsPage() {
   const [selectedDog, setSelectedDog] = useState<string>('all');
 
-  const data = mockAchievements;
-  const allBadges = data.dogs.flatMap((dog) =>
-    dog.badges.map((badge) => ({ ...badge, dog_name: dog.name, dog_id: dog.id }))
-  );
+  const { data, isLoading } = usePetParentAchievements();
 
-  const filteredBadges =
-    selectedDog === 'all'
+  const allBadges = useMemo(() => {
+    if (!data?.dogs) return [];
+    return data.dogs.flatMap((dog) =>
+      dog.badges.map((badge) => ({ ...badge, dog_name: dog.name, dog_id: dog.id }))
+    );
+  }, [data]);
+
+  const filteredBadges = useMemo(() => {
+    return selectedDog === 'all'
       ? allBadges
       : allBadges.filter((b) => b.dog_id === selectedDog);
+  }, [allBadges, selectedDog]);
+
+  if (isLoading || !data) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+          <p className="text-surface-400">Loading achievements...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -234,7 +135,7 @@ export default function PetParentAchievementsPage() {
           <Card key={dog.id}>
             <CardContent className="p-6">
               <div className="flex items-start gap-4 mb-4">
-                <Avatar name={dog.name} size="lg" />
+                <Avatar name={dog.name} size="lg" src={dog.photo_url} />
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-white">{dog.name}</h3>
                   <p className="text-sm text-surface-500">
@@ -243,7 +144,7 @@ export default function PetParentAchievementsPage() {
                 </div>
                 <div className="flex -space-x-2">
                   {dog.badges.slice(0, 3).map((badge) => (
-                    <TierBadge key={badge.id} tier={badge.tier as any} size="sm">
+                    <TierBadge key={badge.id} tier={badge.tier as 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond'} size="sm">
                       <BadgeIcon icon={badge.icon} size={12} />
                     </TierBadge>
                   ))}
@@ -258,7 +159,7 @@ export default function PetParentAchievementsPage() {
                       <span className="text-sm font-medium text-white">
                         Next: {dog.next_badge.name}
                       </span>
-                      <TierBadge tier={dog.next_badge.tier as any} size="xs">
+                      <TierBadge tier={dog.next_badge.tier as 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond'} size="xs">
                         <Star size={10} />
                       </TierBadge>
                     </div>
@@ -304,7 +205,7 @@ export default function PetParentAchievementsPage() {
                 key={badge.id}
                 className="flex items-center gap-4 p-4 rounded-xl bg-surface-800/50 border border-surface-700 hover:border-surface-600 transition-colors"
               >
-                <TierBadge tier={badge.tier as any} size="lg">
+                <TierBadge tier={badge.tier as 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond'} size="lg">
                   <BadgeIcon icon={badge.icon} size={20} />
                 </TierBadge>
                 <div className="flex-1 min-w-0">

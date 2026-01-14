@@ -25,6 +25,7 @@ export interface ActivityDog {
   startedAt: Date;
   trainer: string;
   activityId?: string;
+  programId?: string;
   notes?: string;
 }
 
@@ -35,7 +36,8 @@ interface ActivityCardProps {
   onAddPhoto?: () => void;
   onAddNote?: (note: string) => void;
   onEndActivity?: () => void;
-  dragHandleProps?: Record<string, unknown>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  dragHandleProps?: any;
 }
 
 export function ActivityCard({

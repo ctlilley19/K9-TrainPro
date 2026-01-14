@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { Card, CardHeader, CardContent, StatCard } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
-import { StatusBadge, TierBadge } from '@/components/ui/Badge';
-import { formatDate, formatDuration } from '@/lib/utils';
+import { TierBadge } from '@/components/ui/Badge';
+import { formatDate } from '@/lib/utils';
+import { usePetParentDashboard } from '@/hooks';
 import {
   Dog,
   Calendar,
@@ -16,78 +16,11 @@ import {
   Clock,
   TrendingUp,
   ChevronRight,
-  Play,
   Star,
   Heart,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
-
-// Mock data for pet parent dashboard
-const mockDashboardData = {
-  family: {
-    name: 'Anderson Family',
-  },
-  dogs: [
-    {
-      id: 'a',
-      name: 'Max',
-      breed: 'German Shepherd',
-      photo_url: null,
-      program: {
-        name: '3-Week Board & Train',
-        type: 'board_train',
-        start_date: '2025-01-06',
-        end_date: '2025-01-27',
-        progress: 45,
-        days_remaining: 12,
-      },
-      today_activities: [
-        { type: 'training', duration: 45, time: '9:00 AM' },
-        { type: 'play', duration: 30, time: '11:00 AM' },
-        { type: 'feeding', duration: 15, time: '12:00 PM' },
-      ],
-      badges_earned: 3,
-      skills_learned: 5,
-      recent_badge: { name: 'Sit Master', tier: 'gold' },
-    },
-    {
-      id: 'b',
-      name: 'Bella',
-      breed: 'Golden Retriever',
-      photo_url: null,
-      program: {
-        name: 'Puppy Foundations',
-        type: 'day_train',
-        start_date: '2025-01-06',
-        end_date: '2025-02-14',
-        progress: 25,
-        days_remaining: 30,
-      },
-      today_activities: [
-        { type: 'training', duration: 30, time: '10:00 AM' },
-        { type: 'play', duration: 45, time: '2:00 PM' },
-      ],
-      badges_earned: 1,
-      skills_learned: 2,
-      recent_badge: null,
-    },
-  ],
-  recent_reports: [
-    { id: '1', dog_name: 'Max', date: '2025-01-12', highlights: 'Great progress on leash walking!' },
-    { id: '2', dog_name: 'Bella', date: '2025-01-12', highlights: 'Working on basic commands.' },
-    { id: '3', dog_name: 'Max', date: '2025-01-11', highlights: 'Recall training session.' },
-  ],
-  recent_photos: [
-    { id: '1', url: null, dog_name: 'Max', caption: 'Training session', date: '2025-01-12' },
-    { id: '2', url: null, dog_name: 'Bella', caption: 'Play time', date: '2025-01-12' },
-    { id: '3', url: null, dog_name: 'Max', caption: 'Good boy!', date: '2025-01-11' },
-    { id: '4', url: null, dog_name: 'Bella', caption: 'Learning sit', date: '2025-01-11' },
-  ],
-  upcoming: [
-    { type: 'graduation', dog_name: 'Max', date: '2025-01-27', title: 'Graduation Day!' },
-    { type: 'report', dog_name: 'Max', date: '2025-01-13', title: 'Weekly Progress Report' },
-  ],
-};
 
 function ActivityIcon({ type }: { type: string }) {
   switch (type) {
@@ -103,7 +36,18 @@ function ActivityIcon({ type }: { type: string }) {
 }
 
 export default function PetParentDashboard() {
-  const data = mockDashboardData;
+  const { data, isLoading } = usePetParentDashboard();
+
+  if (isLoading || !data) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+          <p className="text-surface-400">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -124,7 +68,7 @@ export default function PetParentDashboard() {
             {/* Dog Header with Gradient */}
             <div className="bg-gradient-to-r from-brand-500/20 to-purple-500/20 p-6">
               <div className="flex items-start gap-4">
-                <Avatar name={dog.name} size="xl" />
+                <Avatar name={dog.name} size="xl" src={dog.photo_url} />
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <div>
@@ -140,21 +84,23 @@ export default function PetParentDashboard() {
                   </div>
 
                   {/* Program Progress */}
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between text-sm mb-2">
-                      <span className="text-surface-300">{dog.program.name}</span>
-                      <span className="text-brand-400">{dog.program.progress}%</span>
+                  {dog.program && (
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <span className="text-surface-300">{dog.program.name}</span>
+                        <span className="text-brand-400">{dog.program.progress}%</span>
+                      </div>
+                      <div className="h-2 bg-surface-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-brand-500 to-brand-400 rounded-full transition-all"
+                          style={{ width: `${dog.program.progress}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-surface-500 mt-1">
+                        {dog.program.days_remaining} days remaining
+                      </p>
                     </div>
-                    <div className="h-2 bg-surface-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-brand-500 to-brand-400 rounded-full transition-all"
-                        style={{ width: `${dog.program.progress}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-surface-500 mt-1">
-                      {dog.program.days_remaining} days remaining
-                    </p>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -182,16 +128,16 @@ export default function PetParentDashboard() {
               <div className="flex items-center gap-4 pt-4 border-t border-surface-800">
                 <div className="flex items-center gap-2">
                   <Award size={16} className="text-yellow-400" />
-                  <span className="text-sm text-white">{dog.badges_earned} badges</span>
+                  <span className="text-sm text-white">{dog.stats.badges_earned} badges</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <TrendingUp size={16} className="text-green-400" />
-                  <span className="text-sm text-white">{dog.skills_learned} skills</span>
+                  <span className="text-sm text-white">{dog.stats.skills_learned} skills</span>
                 </div>
-                {dog.recent_badge && (
+                {dog.recent_badges && dog.recent_badges.length > 0 && (
                   <div className="ml-auto">
-                    <TierBadge tier={dog.recent_badge.tier as any} size="sm">
-                      {dog.recent_badge.name}
+                    <TierBadge tier={dog.recent_badges[0].tier as 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond'} size="sm">
+                      {dog.recent_badges[0].name}
                     </TierBadge>
                   </div>
                 )}
@@ -205,13 +151,13 @@ export default function PetParentDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           title="Total Badges"
-          value={data.dogs.reduce((sum, d) => sum + d.badges_earned, 0)}
+          value={data.dogs.reduce((sum, d) => sum + d.stats.badges_earned, 0)}
           icon={<Award size={20} />}
           trend={{ value: 2, label: 'this week' }}
         />
         <StatCard
           title="Skills Learned"
-          value={data.dogs.reduce((sum, d) => sum + d.skills_learned, 0)}
+          value={data.dogs.reduce((sum, d) => sum + d.stats.skills_learned, 0)}
           icon={<TrendingUp size={20} />}
           trend={{ value: 3, label: 'this week' }}
         />
@@ -256,12 +202,12 @@ export default function PetParentDashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-white">{report.dog_name}</span>
+                      <span className="font-medium text-white">{report.dog.name}</span>
                       <span className="text-xs text-surface-500">
                         {formatDate(report.date)}
                       </span>
                     </div>
-                    <p className="text-sm text-surface-400 truncate">{report.highlights}</p>
+                    <p className="text-sm text-surface-400 truncate">{report.summary}</p>
                   </div>
                   <ChevronRight size={18} className="text-surface-600" />
                 </Link>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   DragDropContext,
   Droppable,
@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/Button';
 import { ActivityBadge } from '@/components/ui/Badge';
 import { ActivityCard, QuickLogFAB, type ActivityDog } from '@/components/training';
 import { cn, activityConfig, type ActivityType } from '@/lib/utils';
+import { useTrainingBoard, useStartActivity, useEndActivity, useQuickLog, type TrainingBoardDog } from '@/hooks';
+import { useUser } from '@/stores/authStore';
 import {
   Dog,
   Filter,
@@ -28,6 +30,8 @@ import {
   RefreshCw,
   Sparkles,
   Stethoscope,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 
 // Activity icons mapping
@@ -54,135 +58,138 @@ const columnConfig: { id: ActivityType; title: string }[] = [
   { id: 'rest', title: 'Rest' },
 ];
 
-// Mock data for training board
-const initialDogsData: Record<ActivityType, ActivityDog[]> = {
-  kennel: [
-    {
-      id: '1',
-      name: 'Max',
-      breed: 'German Shepherd',
-      photo_url: null,
-      startedAt: new Date(Date.now() - 45 * 60000),
-      trainer: 'John',
-    },
-    {
-      id: '2',
-      name: 'Rocky',
-      breed: 'Rottweiler',
-      photo_url: null,
-      startedAt: new Date(Date.now() - 180 * 60000),
-      trainer: 'Sarah',
-    },
-  ],
-  potty: [
-    {
-      id: '3',
-      name: 'Bella',
-      breed: 'Golden Retriever',
-      photo_url: null,
-      startedAt: new Date(Date.now() - 5 * 60000),
-      trainer: 'John',
-    },
-  ],
-  training: [
-    {
-      id: '4',
-      name: 'Luna',
-      breed: 'Border Collie',
-      photo_url: null,
-      startedAt: new Date(Date.now() - 20 * 60000),
-      trainer: 'Sarah',
-    },
-    {
-      id: '5',
-      name: 'Charlie',
-      breed: 'Labrador',
-      photo_url: null,
-      startedAt: new Date(Date.now() - 15 * 60000),
-      trainer: 'Mike',
-    },
-  ],
-  play: [
-    {
-      id: '6',
-      name: 'Daisy',
-      breed: 'Beagle',
-      photo_url: null,
-      startedAt: new Date(Date.now() - 25 * 60000),
-      trainer: 'John',
-    },
-  ],
-  feeding: [],
-  rest: [
-    {
-      id: '7',
-      name: 'Cooper',
-      breed: 'Husky',
-      photo_url: null,
-      startedAt: new Date(Date.now() - 60 * 60000),
-      trainer: 'Sarah',
-    },
-  ],
-  group_play: [],
-  walk: [],
-  grooming: [],
-  medical: [],
-};
-
-// All dogs for quick log
-const allDogs = Object.values(initialDogsData)
-  .flat()
-  .map((d) => ({ id: d.id, name: d.name }));
+// Transform TrainingBoardDog to ActivityDog for the UI components
+function transformToActivityDog(dog: TrainingBoardDog): ActivityDog {
+  return {
+    id: dog.dogId,
+    name: dog.dogName,
+    breed: dog.dogBreed,
+    photo_url: dog.photoUrl,
+    startedAt: dog.startedAt,
+    trainer: dog.trainer,
+    notes: dog.notes,
+    activityId: dog.id, // Store the activity ID for mutations
+    programId: dog.programId,
+  };
+}
 
 export default function TrainingBoardPage() {
-  const [columns, setColumns] = useState<Record<ActivityType, ActivityDog[]>>(initialDogsData);
+  const user = useUser();
+  const { data: boardData, isLoading, error, refetch } = useTrainingBoard();
+  const startActivity = useStartActivity();
+  const endActivity = useEndActivity();
+  const quickLog = useQuickLog();
 
-  const handleDragEnd = useCallback((result: DropResult) => {
-    const { source, destination, draggableId } = result;
+  // Local state for optimistic updates during drag operations
+  const [columns, setColumns] = useState<Record<ActivityType, ActivityDog[]>>({
+    kennel: [],
+    potty: [],
+    training: [],
+    play: [],
+    group_play: [],
+    feeding: [],
+    rest: [],
+    walk: [],
+    grooming: [],
+    medical: [],
+  });
 
-    // Dropped outside a droppable area
-    if (!destination) return;
+  // Sync server data to local state
+  useEffect(() => {
+    if (boardData) {
+      const transformedData: Record<ActivityType, ActivityDog[]> = {
+        kennel: [],
+        potty: [],
+        training: [],
+        play: [],
+        group_play: [],
+        feeding: [],
+        rest: [],
+        walk: [],
+        grooming: [],
+        medical: [],
+      };
 
-    // Dropped in the same position
-    if (
-      source.droppableId === destination.droppableId &&
-      source.index === destination.index
-    ) {
-      return;
-    }
-
-    const sourceColumn = source.droppableId as ActivityType;
-    const destColumn = destination.droppableId as ActivityType;
-
-    // Create new state
-    setColumns((prev) => {
-      const newColumns = { ...prev };
-
-      // Remove from source
-      const sourceDogs = [...newColumns[sourceColumn]];
-      const [movedDog] = sourceDogs.splice(source.index, 1);
-
-      // Update the dog's start time when moving to a new column
-      if (sourceColumn !== destColumn) {
-        movedDog.startedAt = new Date();
+      for (const [activityType, dogs] of Object.entries(boardData)) {
+        transformedData[activityType as ActivityType] = dogs.map(transformToActivityDog);
       }
 
-      // Add to destination
-      const destDogs = sourceColumn === destColumn ? sourceDogs : [...newColumns[destColumn]];
-      destDogs.splice(destination.index, 0, movedDog);
+      setColumns(transformedData);
+    }
+  }, [boardData]);
 
-      newColumns[sourceColumn] = sourceDogs;
-      newColumns[destColumn] = destDogs;
+  const handleDragEnd = useCallback(
+    async (result: DropResult) => {
+      const { source, destination, draggableId } = result;
 
-      // In a real app, call activitiesService here
-      console.log(`Moved ${movedDog.name} from ${sourceColumn} to ${destColumn}`);
+      // Dropped outside a droppable area
+      if (!destination) return;
 
-      return newColumns;
-    });
-  }, []);
+      // Dropped in the same position
+      if (
+        source.droppableId === destination.droppableId &&
+        source.index === destination.index
+      ) {
+        return;
+      }
+
+      const sourceColumn = source.droppableId as ActivityType;
+      const destColumn = destination.droppableId as ActivityType;
+
+      // Find the dog being moved
+      const movedDog = columns[sourceColumn][source.index];
+      if (!movedDog) return;
+
+      // Optimistic update
+      setColumns((prev) => {
+        const newColumns = { ...prev };
+
+        // Remove from source
+        const sourceDogs = [...newColumns[sourceColumn]];
+        const [removedDog] = sourceDogs.splice(source.index, 1);
+
+        // Update the dog's start time when moving to a new column
+        const updatedDog = sourceColumn !== destColumn
+          ? { ...removedDog, startedAt: new Date() }
+          : removedDog;
+
+        // Add to destination
+        const destDogs = sourceColumn === destColumn ? sourceDogs : [...newColumns[destColumn]];
+        destDogs.splice(destination.index, 0, updatedDog);
+
+        newColumns[sourceColumn] = sourceDogs;
+        newColumns[destColumn] = destDogs;
+
+        return newColumns;
+      });
+
+      // If moving to a different column, start a new activity
+      if (sourceColumn !== destColumn && movedDog.programId) {
+        try {
+          // End current activity
+          if (movedDog.activityId) {
+            await endActivity.mutateAsync({ activityId: movedDog.activityId });
+          }
+
+          // Start new activity
+          await startActivity.mutateAsync({
+            dog_id: movedDog.id,
+            program_id: movedDog.programId,
+            type: destColumn,
+            trainer_id: user?.id || '',
+          });
+        } catch (err) {
+          console.error('Failed to update activity:', err);
+          // Revert on error - refetch will restore correct state
+          refetch();
+        }
+      }
+    },
+    [columns, endActivity, startActivity, user?.id, refetch]
+  );
 
   const handleQuickLog = useCallback(
-    (dogId: string, activityType: ActivityType, notes?: string) => {
+    async (dogId: string, activityType: ActivityType, notes?: string) => {
       // Find the dog in any column
       let foundDog: ActivityDog | null = null;
       let sourceColumn: ActivityType | null = null;
@@ -196,8 +203,9 @@ export default function TrainingBoardPage() {
         }
       }
 
-      if (!foundDog || !sourceColumn) return;
+      if (!foundDog || !sourceColumn || !foundDog.programId) return;
 
+      // Optimistic update
       setColumns((prev) => {
         const newColumns = { ...prev };
 
@@ -214,48 +222,127 @@ export default function TrainingBoardPage() {
           },
         ];
 
-        console.log(`Quick logged ${foundDog!.name} to ${activityType}${notes ? ` with note: ${notes}` : ''}`);
-
         return newColumns;
       });
+
+      try {
+        // End current activity
+        if (foundDog.activityId) {
+          await endActivity.mutateAsync({ activityId: foundDog.activityId });
+        }
+
+        // Start new activity
+        await startActivity.mutateAsync({
+          dog_id: dogId,
+          program_id: foundDog.programId,
+          type: activityType,
+          trainer_id: user?.id || '',
+          notes,
+        });
+      } catch (err) {
+        console.error('Failed to log activity:', err);
+        refetch();
+      }
     },
-    [columns]
+    [columns, endActivity, startActivity, user?.id, refetch]
   );
 
   const handleAddPhoto = useCallback((dogId: string) => {
-    // In a real app, open file picker and upload photo
+    // TODO: Open file picker and upload photo
     console.log('Add photo for dog:', dogId);
   }, []);
 
-  const handleAddNote = useCallback((dogId: string, note: string) => {
-    setColumns((prev) => {
-      const newColumns = { ...prev };
-      for (const column of Object.keys(newColumns) as ActivityType[]) {
-        newColumns[column] = newColumns[column].map((dog) =>
-          dog.id === dogId ? { ...dog, notes: note } : dog
-        );
+  const handleAddNote = useCallback(
+    async (dogId: string, note: string) => {
+      setColumns((prev) => {
+        const newColumns = { ...prev };
+        for (const column of Object.keys(newColumns) as ActivityType[]) {
+          newColumns[column] = newColumns[column].map((dog) =>
+            dog.id === dogId ? { ...dog, notes: note } : dog
+          );
+        }
+        return newColumns;
+      });
+      // TODO: Update activity notes via API
+    },
+    []
+  );
+
+  const handleEndActivity = useCallback(
+    async (dogId: string, currentColumn: ActivityType) => {
+      const dog = columns[currentColumn].find((d) => d.id === dogId);
+      if (!dog || !dog.programId) return;
+
+      // Optimistic update - move dog back to kennel
+      setColumns((prev) => {
+        const newColumns = { ...prev };
+        const movingDog = newColumns[currentColumn].find((d) => d.id === dogId);
+        if (!movingDog) return prev;
+
+        newColumns[currentColumn] = newColumns[currentColumn].filter((d) => d.id !== dogId);
+        newColumns.kennel = [
+          ...newColumns.kennel,
+          { ...movingDog, startedAt: new Date(), notes: undefined },
+        ];
+
+        return newColumns;
+      });
+
+      try {
+        // End current activity
+        if (dog.activityId) {
+          await endActivity.mutateAsync({ activityId: dog.activityId });
+        }
+
+        // Start kennel activity
+        await startActivity.mutateAsync({
+          dog_id: dogId,
+          program_id: dog.programId,
+          type: 'kennel',
+          trainer_id: user?.id || '',
+        });
+      } catch (err) {
+        console.error('Failed to end activity:', err);
+        refetch();
       }
-      return newColumns;
-    });
-  }, []);
+    },
+    [columns, endActivity, startActivity, user?.id, refetch]
+  );
 
-  const handleEndActivity = useCallback((dogId: string, currentColumn: ActivityType) => {
-    // Move dog back to kennel
-    setColumns((prev) => {
-      const newColumns = { ...prev };
-      const dog = newColumns[currentColumn].find((d) => d.id === dogId);
-      if (!dog) return prev;
+  // Get all dogs for quick log dropdown
+  const allDogs = Object.values(columns)
+    .flat()
+    .map((d) => ({ id: d.id, name: d.name }));
 
-      newColumns[currentColumn] = newColumns[currentColumn].filter((d) => d.id !== dogId);
-      newColumns.kennel = [
-        ...newColumns.kennel,
-        { ...dog, startedAt: new Date(), notes: undefined },
-      ];
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="h-[calc(100vh-8rem)] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+          <p className="text-surface-400">Loading training board...</p>
+        </div>
+      </div>
+    );
+  }
 
-      console.log(`Ended activity for ${dog.name}, moved back to kennel`);
-      return newColumns;
-    });
-  }, []);
+  // Error state
+  if (error) {
+    return (
+      <div className="h-[calc(100vh-8rem)] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <AlertCircle className="h-12 w-12 text-red-500" />
+          <h2 className="text-xl font-semibold text-white">Failed to load training board</h2>
+          <p className="text-surface-400 max-w-md">
+            {error instanceof Error ? error.message : 'An unexpected error occurred'}
+          </p>
+          <Button variant="primary" onClick={() => refetch()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[calc(100vh-8rem)]">
@@ -264,7 +351,12 @@ export default function TrainingBoardPage() {
         description="Drag dogs between columns to log activities"
         action={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" leftIcon={<RefreshCw size={16} />}>
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<RefreshCw size={16} />}
+              onClick={() => refetch()}
+            >
               Refresh
             </Button>
             <Button variant="outline" size="sm" leftIcon={<Filter size={16} />}>
