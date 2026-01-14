@@ -23,6 +23,26 @@ import {
   Calendar,
   Flame,
   GraduationCap,
+  Footprints,
+  Users,
+  Building2,
+  Sparkles,
+  Medal,
+  Clock,
+  Sun,
+  Moon,
+  MapPin,
+  Timer,
+  CheckCircle2,
+  TrendingUp,
+  Compass,
+  Handshake,
+  Home,
+  Route,
+  PartyPopper,
+  CircleDot,
+  BadgeCheck,
+  Milestone,
 } from 'lucide-react';
 
 // Tier colors for styling
@@ -46,6 +66,28 @@ const badgeIcons: Record<string, (color: string, size?: number) => React.ReactNo
   dog: (color, size = 32) => <Dog size={size} stroke={color} />,
   flame: (color, size = 32) => <Flame size={size} stroke={color} />,
   graduation: (color, size = 32) => <GraduationCap size={size} stroke={color} />,
+  footprints: (color, size = 32) => <Footprints size={size} stroke={color} />,
+  users: (color, size = 32) => <Users size={size} stroke={color} />,
+  building: (color, size = 32) => <Building2 size={size} stroke={color} />,
+  sparkles: (color, size = 32) => <Sparkles size={size} stroke={color} />,
+  medal: (color, size = 32) => <Medal size={size} stroke={color} />,
+  clock: (color, size = 32) => <Clock size={size} stroke={color} />,
+  sun: (color, size = 32) => <Sun size={size} stroke={color} />,
+  moon: (color, size = 32) => <Moon size={size} stroke={color} />,
+  mappin: (color, size = 32) => <MapPin size={size} stroke={color} />,
+  timer: (color, size = 32) => <Timer size={size} stroke={color} />,
+  check: (color, size = 32) => <CheckCircle2 size={size} stroke={color} />,
+  trending: (color, size = 32) => <TrendingUp size={size} stroke={color} />,
+  compass: (color, size = 32) => <Compass size={size} stroke={color} />,
+  handshake: (color, size = 32) => <Handshake size={size} stroke={color} />,
+  home: (color, size = 32) => <Home size={size} stroke={color} />,
+  route: (color, size = 32) => <Route size={size} stroke={color} />,
+  party: (color, size = 32) => <PartyPopper size={size} stroke={color} />,
+  circle: (color, size = 32) => <CircleDot size={size} stroke={color} />,
+  badge: (color, size = 32) => <BadgeCheck size={size} stroke={color} />,
+  milestone: (color, size = 32) => <Milestone size={size} stroke={color} />,
+  award: (color, size = 32) => <Award size={size} stroke={color} />,
+  calendar: (color, size = 32) => <Calendar size={size} stroke={color} />,
 };
 
 // Badge definitions with full tier support
@@ -105,7 +147,7 @@ const achievementBadges = [
     name: 'Heel Master',
     description: 'Perfect heel position',
     color: 'blue' as const,
-    icon: 'target',
+    icon: 'footprints',
   },
   {
     id: 'zen-master',
@@ -135,6 +177,20 @@ const achievementBadges = [
     color: 'orange' as const,
     icon: 'graduation',
   },
+  {
+    id: 'cgc-ready',
+    name: 'CGC Ready',
+    description: 'Canine Good Citizen prep',
+    color: 'blue' as const,
+    icon: 'badge',
+  },
+  {
+    id: 'trick-star',
+    name: 'Trick Star',
+    description: 'Learned 10+ tricks',
+    color: 'purple' as const,
+    icon: 'sparkles',
+  },
 ];
 
 const milestoneBadges = [
@@ -157,7 +213,7 @@ const milestoneBadges = [
     name: 'Perfect Potty',
     description: 'No accidents for 7 days',
     color: 'green' as const,
-    icon: 'star',
+    icon: 'check',
   },
   {
     id: 'quick-learner',
@@ -166,10 +222,64 @@ const milestoneBadges = [
     color: 'yellow' as const,
     icon: 'zap',
   },
+  {
+    id: 'month-1',
+    name: 'Month 1',
+    description: '30 days milestone',
+    color: 'orange' as const,
+    icon: 'calendar',
+  },
+  {
+    id: 'perfect-week',
+    name: 'Perfect Week',
+    description: 'All goals met for 7 days',
+    color: 'green' as const,
+    icon: 'star',
+  },
+];
+
+// Streak badges
+const streakBadges = [
+  {
+    id: 'streak-3',
+    name: '3-Day Streak',
+    description: 'Training 3 days in a row',
+    color: 'orange' as const,
+    icon: 'flame',
+  },
+  {
+    id: 'streak-7',
+    name: 'Week Warrior',
+    description: '7 day training streak',
+    color: 'yellow' as const,
+    icon: 'flame',
+  },
+  {
+    id: 'streak-30',
+    name: 'Monthly Master',
+    description: '30 day training streak',
+    color: 'green' as const,
+    icon: 'flame',
+  },
+  {
+    id: 'streak-90',
+    name: 'Quarter Champ',
+    description: '90 day training streak',
+    color: 'purple' as const,
+    icon: 'flame',
+  },
+  {
+    id: 'streak-365',
+    name: 'Year Legend',
+    description: '365 day training streak',
+    color: 'red' as const,
+    icon: 'crown',
+  },
 ];
 
 // Badge library definitions (for trainers to award)
 const badgeLibrary = [
+  // === OBEDIENCE BASICS ===
   {
     id: 'sit-master',
     name: 'Sit Master',
@@ -195,29 +305,235 @@ const badgeLibrary = [
     tiers: ['bronze', 'silver', 'gold', 'platinum', 'diamond'] as BadgeTier[],
   },
   {
+    id: 'down-master',
+    name: 'Down Master',
+    description: 'Reliable down command on cue',
+    category: 'obedience',
+    icon: 'star',
+    tiers: ['bronze', 'silver', 'gold', 'platinum', 'diamond'] as BadgeTier[],
+  },
+  {
+    id: 'leave-it-pro',
+    name: 'Leave It Pro',
+    description: 'Impulse control around distractions',
+    category: 'obedience',
+    icon: 'shield',
+    tiers: ['bronze', 'silver', 'gold'] as BadgeTier[],
+  },
+  {
+    id: 'drop-it-star',
+    name: 'Drop It Star',
+    description: 'Reliable release of items on command',
+    category: 'obedience',
+    icon: 'star',
+    tiers: ['bronze', 'silver', 'gold'] as BadgeTier[],
+  },
+
+  // === LEASH & WALKING ===
+  {
     id: 'leash-walking',
     name: 'Leash Walking Pro',
     description: 'Walk calmly on leash without pulling',
     category: 'leash',
-    icon: 'target',
+    icon: 'route',
+    tiers: ['bronze', 'silver', 'gold', 'platinum'] as BadgeTier[],
+  },
+  {
+    id: 'heel-master',
+    name: 'Heel Master',
+    description: 'Perfect heel position beside handler',
+    category: 'leash',
+    icon: 'footprints',
+    tiers: ['bronze', 'silver', 'gold', 'platinum', 'diamond'] as BadgeTier[],
+  },
+  {
+    id: 'loose-leash',
+    name: 'Loose Leash Legend',
+    description: 'Walk without tension on leash',
+    category: 'leash',
+    icon: 'route',
     tiers: ['bronze', 'silver', 'gold'] as BadgeTier[],
   },
+
+  // === SOCIAL SKILLS ===
   {
     id: 'social-butterfly',
     name: 'Social Butterfly',
     description: 'Positive interactions with dogs and people',
     category: 'social',
     icon: 'heart',
+    tiers: ['bronze', 'silver', 'gold', 'platinum'] as BadgeTier[],
+  },
+  {
+    id: 'dog-friendly',
+    name: 'Dog Friendly',
+    description: 'Calm and appropriate with other dogs',
+    category: 'social',
+    icon: 'dog',
     tiers: ['bronze', 'silver', 'gold'] as BadgeTier[],
   },
+  {
+    id: 'stranger-friendly',
+    name: 'Stranger Friendly',
+    description: 'Calm greetings with new people',
+    category: 'social',
+    icon: 'users',
+    tiers: ['bronze', 'silver', 'gold'] as BadgeTier[],
+  },
+  {
+    id: 'polite-greeter',
+    name: 'Polite Greeter',
+    description: 'No jumping when meeting people',
+    category: 'social',
+    icon: 'handshake',
+    tiers: ['bronze', 'silver', 'gold'] as BadgeTier[],
+  },
+
+  // === BEHAVIOR & MANNERS ===
   {
     id: 'zen-master',
     name: 'Zen Master',
     description: 'Extended place/stay command mastery',
     category: 'behavior',
-    icon: 'zap',
+    icon: 'shield',
+    tiers: ['bronze', 'silver', 'gold', 'platinum', 'diamond'] as BadgeTier[],
+  },
+  {
+    id: 'crate-comfortable',
+    name: 'Crate Comfortable',
+    description: 'Relaxed and calm in kennel/crate',
+    category: 'behavior',
+    icon: 'home',
     tiers: ['bronze', 'silver', 'gold'] as BadgeTier[],
   },
+  {
+    id: 'potty-pro',
+    name: 'Potty Pro',
+    description: 'House training mastery',
+    category: 'behavior',
+    icon: 'check',
+    tiers: ['bronze', 'silver', 'gold'] as BadgeTier[],
+  },
+  {
+    id: 'calm-traveler',
+    name: 'Calm Traveler',
+    description: 'Relaxed behavior during car rides',
+    category: 'behavior',
+    icon: 'compass',
+    tiers: ['bronze', 'silver', 'gold'] as BadgeTier[],
+  },
+  {
+    id: 'impulse-control',
+    name: 'Impulse Control',
+    description: 'Wait patiently for food and doors',
+    category: 'behavior',
+    icon: 'timer',
+    tiers: ['bronze', 'silver', 'gold', 'platinum'] as BadgeTier[],
+  },
+
+  // === AKC-INSPIRED CERTIFICATIONS ===
+  {
+    id: 'cgc-ready',
+    name: 'CGC Ready',
+    description: 'Canine Good Citizen test preparation',
+    category: 'certification',
+    icon: 'badge',
+    tiers: ['bronze', 'silver', 'gold'] as BadgeTier[],
+  },
+  {
+    id: 'community-canine',
+    name: 'Community Canine',
+    description: 'Advanced CGC in real-world settings',
+    category: 'certification',
+    icon: 'building',
+    tiers: ['silver', 'gold', 'platinum'] as BadgeTier[],
+  },
+  {
+    id: 'urban-canine',
+    name: 'Urban Canine',
+    description: 'City environment proficiency',
+    category: 'certification',
+    icon: 'building',
+    tiers: ['silver', 'gold', 'platinum'] as BadgeTier[],
+  },
+  {
+    id: 'therapy-ready',
+    name: 'Therapy Dog Ready',
+    description: 'Temperament for therapy work',
+    category: 'certification',
+    icon: 'heart',
+    tiers: ['gold', 'platinum', 'diamond'] as BadgeTier[],
+  },
+
+  // === TRICK DOG ===
+  {
+    id: 'trick-novice',
+    name: 'Novice Tricks',
+    description: 'Learned 10 basic tricks',
+    category: 'tricks',
+    icon: 'sparkles',
+    tiers: ['bronze'] as BadgeTier[],
+  },
+  {
+    id: 'trick-intermediate',
+    name: 'Intermediate Tricks',
+    description: 'Mastered intermediate tricks',
+    category: 'tricks',
+    icon: 'sparkles',
+    tiers: ['silver'] as BadgeTier[],
+  },
+  {
+    id: 'trick-advanced',
+    name: 'Advanced Tricks',
+    description: 'Expert level trick performance',
+    category: 'tricks',
+    icon: 'sparkles',
+    tiers: ['gold'] as BadgeTier[],
+  },
+  {
+    id: 'trick-performer',
+    name: 'Trick Performer',
+    description: 'Can perform trick routines',
+    category: 'tricks',
+    icon: 'star',
+    tiers: ['platinum'] as BadgeTier[],
+  },
+  {
+    id: 'trick-elite',
+    name: 'Elite Performer',
+    description: 'Scripted performance mastery',
+    category: 'tricks',
+    icon: 'crown',
+    tiers: ['diamond'] as BadgeTier[],
+  },
+
+  // === OBEDIENCE COMPETITION ===
+  {
+    id: 'companion-dog',
+    name: 'Companion Dog',
+    description: 'Novice obedience competition ready',
+    category: 'competition',
+    icon: 'medal',
+    tiers: ['bronze', 'silver', 'gold'] as BadgeTier[],
+  },
+  {
+    id: 'companion-excellent',
+    name: 'Companion Excellent',
+    description: 'Open class obedience skills',
+    category: 'competition',
+    icon: 'medal',
+    tiers: ['silver', 'gold', 'platinum'] as BadgeTier[],
+  },
+  {
+    id: 'utility-dog',
+    name: 'Utility Dog',
+    description: 'Advanced utility obedience',
+    category: 'competition',
+    icon: 'trophy',
+    tiers: ['gold', 'platinum', 'diamond'] as BadgeTier[],
+  },
+
+  // === MILESTONES ===
   {
     id: 'first-week',
     name: 'First Week Star',
@@ -227,12 +543,112 @@ const badgeLibrary = [
     tiers: ['bronze'] as BadgeTier[],
   },
   {
+    id: 'first-month',
+    name: 'First Month',
+    description: 'One month training milestone',
+    category: 'milestone',
+    icon: 'calendar',
+    tiers: ['silver'] as BadgeTier[],
+  },
+  {
+    id: 'three-months',
+    name: 'Quarter Complete',
+    description: 'Three months of progress',
+    category: 'milestone',
+    icon: 'milestone',
+    tiers: ['gold'] as BadgeTier[],
+  },
+  {
     id: 'graduate',
     name: 'Program Graduate',
     description: 'Successfully complete a training program',
     category: 'milestone',
+    icon: 'graduation',
+    tiers: ['gold', 'platinum'] as BadgeTier[],
+  },
+
+  // === STREAKS ===
+  {
+    id: 'streak-week',
+    name: 'Week Warrior',
+    description: '7 consecutive training days',
+    category: 'streak',
+    icon: 'flame',
+    tiers: ['bronze'] as BadgeTier[],
+  },
+  {
+    id: 'streak-month',
+    name: 'Monthly Master',
+    description: '30 consecutive training days',
+    category: 'streak',
+    icon: 'flame',
+    tiers: ['silver', 'gold'] as BadgeTier[],
+  },
+  {
+    id: 'streak-quarter',
+    name: 'Quarter Champion',
+    description: '90 consecutive training days',
+    category: 'streak',
+    icon: 'flame',
+    tiers: ['gold', 'platinum'] as BadgeTier[],
+  },
+  {
+    id: 'streak-year',
+    name: 'Year Legend',
+    description: '365 consecutive training days',
+    category: 'streak',
     icon: 'crown',
-    tiers: ['gold'] as BadgeTier[],
+    tiers: ['diamond'] as BadgeTier[],
+  },
+
+  // === SPECIAL ACHIEVEMENTS ===
+  {
+    id: 'early-bird',
+    name: 'Early Bird',
+    description: 'Morning training sessions',
+    category: 'special',
+    icon: 'sun',
+    tiers: ['bronze', 'silver'] as BadgeTier[],
+  },
+  {
+    id: 'night-owl',
+    name: 'Night Owl',
+    description: 'Evening training dedication',
+    category: 'special',
+    icon: 'moon',
+    tiers: ['bronze', 'silver'] as BadgeTier[],
+  },
+  {
+    id: 'quick-learner',
+    name: 'Quick Learner',
+    description: 'Mastered skill in under 3 days',
+    category: 'special',
+    icon: 'zap',
+    tiers: ['bronze', 'silver', 'gold'] as BadgeTier[],
+  },
+  {
+    id: 'perfect-session',
+    name: 'Perfect Session',
+    description: 'Flawless training performance',
+    category: 'special',
+    icon: 'star',
+    tiers: ['bronze', 'silver', 'gold'] as BadgeTier[],
+  },
+  {
+    id: 'comeback-kid',
+    name: 'Comeback Kid',
+    description: 'Overcame a training challenge',
+    category: 'special',
+    icon: 'trending',
+    tiers: ['bronze', 'silver', 'gold'] as BadgeTier[],
+  },
+  {
+    id: 'celebration',
+    name: 'Celebration',
+    description: 'Special achievement unlocked',
+    category: 'special',
+    icon: 'party',
+    tiers: ['gold', 'platinum', 'diamond'] as BadgeTier[],
   },
 ];
 
@@ -257,7 +673,7 @@ export default function BadgesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isAwardModalOpen, setIsAwardModalOpen] = useState(false);
 
-  const categories = ['all', 'obedience', 'leash', 'social', 'behavior', 'milestone'];
+  const categories = ['all', 'obedience', 'leash', 'social', 'behavior', 'certification', 'tricks', 'competition', 'milestone', 'streak', 'special'];
 
   const filteredBadges = useMemo(() => {
     return badgeLibrary.filter((badge) => {
@@ -368,7 +784,7 @@ export default function BadgesPage() {
         <h2 className="text-xs font-semibold text-surface-400 uppercase tracking-widest mb-4 pb-3 border-b border-white/[0.06]">
           Milestone Badges
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
           {milestoneBadges.map((badge) => (
             <BadgeCard
               key={badge.id}
@@ -379,7 +795,33 @@ export default function BadgesPage() {
                 badge.color === 'cyan' ? '#22d3ee' :
                 badge.color === 'purple' ? '#a78bfa' :
                 badge.color === 'green' ? '#4ade80' :
+                badge.color === 'orange' ? '#fb923c' :
                 badge.color === 'yellow' ? '#facc15' : '#9ca3af'
+              ) || <Award size={32} />}
+              size="sm"
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Streak Badges */}
+      <section>
+        <h2 className="text-xs font-semibold text-surface-400 uppercase tracking-widest mb-4 pb-3 border-b border-white/[0.06]">
+          Streak Badges
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+          {streakBadges.map((badge) => (
+            <BadgeCard
+              key={badge.id}
+              achievementColor={badge.color}
+              title={badge.name}
+              description={badge.description}
+              icon={badgeIcons[badge.icon]?.(
+                badge.color === 'orange' ? '#fb923c' :
+                badge.color === 'yellow' ? '#facc15' :
+                badge.color === 'green' ? '#4ade80' :
+                badge.color === 'purple' ? '#a78bfa' :
+                badge.color === 'red' ? '#f87171' : '#9ca3af'
               ) || <Award size={32} />}
               size="sm"
             />
