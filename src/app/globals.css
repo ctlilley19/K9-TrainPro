@@ -95,6 +95,85 @@
   }
 }
 
+/* Badge Animations */
+@layer components {
+  /* Pulse glow for diamond tier badges */
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow:
+        0 0 20px var(--badge-glow, rgba(168, 85, 247, 0.5)),
+        inset 0 1px 1px rgba(255,255,255,0.1);
+    }
+    50% {
+      box-shadow:
+        0 0 35px var(--badge-glow, rgba(168, 85, 247, 0.5)),
+        0 0 60px var(--badge-glow-outer, rgba(168, 85, 247, 0.25)),
+        inset 0 1px 1px rgba(255,255,255,0.15);
+    }
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+
+  /* Sparkle effect for gold/diamond badges */
+  @keyframes sparkle {
+    0%, 100% { opacity: 0; transform: scale(0); }
+    50% { opacity: 1; transform: scale(1); }
+  }
+
+  .animate-sparkle {
+    animation: sparkle 2s ease-in-out infinite;
+  }
+
+  /* Rotating border for diamond tier */
+  @keyframes rotate-gradient {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .animate-diamond-border::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: conic-gradient(from 0deg, #a855f7, #e879f9, #818cf8, #6366f1, #a855f7);
+    border-radius: 18px;
+    z-index: -1;
+    opacity: 0.3;
+    animation: rotate-gradient 8s linear infinite;
+  }
+
+  /* Shimmer effect on hover */
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .badge-shimmer::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      45deg,
+      transparent 40%,
+      rgba(255,255,255,0.1) 50%,
+      transparent 60%
+    );
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+  }
+
+  .badge-shimmer:hover::after {
+    transform: translateX(100%);
+  }
+}
+
 /* Utility Classes */
 @layer utilities {
   /* Hide scrollbar but keep functionality */
