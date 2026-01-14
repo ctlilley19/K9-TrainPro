@@ -21,7 +21,40 @@ export interface MediaFilters {
   dateTo?: string;
 }
 
+export interface MediaUploadOptions {
+  bucket?: 'media' | 'logos' | 'avatars' | 'documents';
+  path?: string;
+  folder?: string;
+  cacheControl?: string;
+}
+
 export const mediaService = {
+  /**
+   * Simple file upload that returns URL (for avatars, logos, etc.)
+   */
+  async uploadFile(file: File, options?: MediaUploadOptions): Promise<string> {
+    const bucket = options?.bucket || 'media';
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
+    const timestamp = Date.now();
+    const folder = options?.folder || 'uploads';
+    const path = options?.path || `${folder}/${timestamp}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(path, file, {
+        cacheControl: options?.cacheControl || '3600',
+        contentType: file.type,
+      });
+
+    if (uploadError) throw uploadError;
+
+    const { data: urlData } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(path);
+
+    return urlData.publicUrl;
+  },
+
   /**
    * Get media with filters
    */

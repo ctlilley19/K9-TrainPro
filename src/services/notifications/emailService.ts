@@ -69,12 +69,13 @@ export const emailTemplates: Record<
   },
 };
 
-// Email data interfaces
+// Email data interfaces with index signatures for compatibility with Record<string, unknown>
 interface BaseEmailData {
   to: string;
   toName: string;
   facilityName: string;
   facilityLogo?: string;
+  [key: string]: unknown;
 }
 
 interface BookingEmailData extends BaseEmailData {

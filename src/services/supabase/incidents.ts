@@ -1,7 +1,7 @@
 // Incident Reporting and Tracking Service
 // Manages safety incidents, behavioral issues, and medical events
 
-import { supabase } from './client';
+import { supabase } from '@/lib/supabase';
 
 // Incident severity levels
 export type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical';

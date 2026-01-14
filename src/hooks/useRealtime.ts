@@ -36,7 +36,7 @@ export function useRealtime<T extends TableName>(
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
-    if (!enabled || isDemoMode) {
+    if (!enabled || isDemoMode()) {
       return;
     }
 
@@ -45,13 +45,13 @@ export function useRealtime<T extends TableName>(
     const channel = supabase
       .channel(channelName)
       .on(
-        'postgres_changes',
+        'postgres_changes' as any,
         {
           event,
           schema,
           table,
           filter,
-        },
+        } as any,
         (payload: RealtimePostgresChangesPayload<Tables[T]['Row']>) => {
           setData(payload.new as Tables[T]['Row']);
           setEventType(payload.eventType);
@@ -108,7 +108,7 @@ export function useRealtimeActivities(options: UseRealtimeActivitiesOptions = {}
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    if (!enabled || isDemoMode) {
+    if (!enabled || isDemoMode()) {
       return;
     }
 
@@ -122,7 +122,7 @@ export function useRealtimeActivities(options: UseRealtimeActivitiesOptions = {}
     const channel = supabase
       .channel(channelName)
       .on(
-        'postgres_changes',
+        'postgres_changes' as any,
         {
           event: '*',
           schema: 'public',
@@ -179,7 +179,7 @@ export function useRealtimePresence(facilityId: string, enabled = true) {
 
   const trackPresence = useCallback(
     (userData: Omit<PresenceState, 'online_at'>) => {
-      if (channelRef.current && !isDemoMode) {
+      if (channelRef.current && !isDemoMode()) {
         channelRef.current.track({
           ...userData,
           online_at: new Date().toISOString(),
@@ -190,7 +190,7 @@ export function useRealtimePresence(facilityId: string, enabled = true) {
   );
 
   useEffect(() => {
-    if (!enabled || isDemoMode || !facilityId) {
+    if (!enabled || isDemoMode() || !facilityId) {
       return;
     }
 
@@ -254,9 +254,9 @@ export function useRealtimeTrainingBoard(facilityId: string, enabled = true) {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   useEffect(() => {
-    if (!enabled || isDemoMode || !facilityId) {
+    if (!enabled || isDemoMode() || !facilityId) {
       // In demo mode, return mock data
-      if (isDemoMode) {
+      if (isDemoMode()) {
         setDogs([
           {
             id: '1',
@@ -286,7 +286,7 @@ export function useRealtimeTrainingBoard(facilityId: string, enabled = true) {
     const dogsChannel = supabase
       .channel(`training-board-dogs-${facilityId}`)
       .on(
-        'postgres_changes',
+        'postgres_changes' as any,
         {
           event: '*',
           schema: 'public',
@@ -302,7 +302,7 @@ export function useRealtimeTrainingBoard(facilityId: string, enabled = true) {
     const activitiesChannel = supabase
       .channel(`training-board-activities-${facilityId}`)
       .on(
-        'postgres_changes',
+        'postgres_changes' as any,
         {
           event: '*',
           schema: 'public',
@@ -370,7 +370,7 @@ export function useRealtimeNotifications(userId: string, enabled = true) {
   }, []);
 
   useEffect(() => {
-    if (!enabled || isDemoMode || !userId) {
+    if (!enabled || isDemoMode() || !userId) {
       return;
     }
 
@@ -397,7 +397,7 @@ export function useRealtimeBroadcast(facilityId: string, enabled = true) {
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   const broadcast = useCallback((message: string, sender: string) => {
-    if (channelRef.current && !isDemoMode) {
+    if (channelRef.current && !isDemoMode()) {
       channelRef.current.send({
         type: 'broadcast',
         event: 'announcement',
@@ -412,7 +412,7 @@ export function useRealtimeBroadcast(facilityId: string, enabled = true) {
   }, []);
 
   useEffect(() => {
-    if (!enabled || isDemoMode || !facilityId) {
+    if (!enabled || isDemoMode() || !facilityId) {
       return;
     }
 

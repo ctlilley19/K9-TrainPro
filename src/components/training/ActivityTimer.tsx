@@ -105,7 +105,7 @@ export function TimerProgressBar({
   const status = getTimerStatus(elapsedMinutes, activityType);
 
   // Calculate progress percentage (max at urgent threshold)
-  const maxTime = config.urgentThreshold;
+  const maxTime = config.maxMinutes;
   const progress = Math.min((elapsedMinutes / maxTime) * 100, 100);
 
   return (
@@ -126,8 +126,8 @@ export function TimerProgressBar({
       <div className="flex justify-between mt-1 text-xs text-surface-500">
         <span>{formatDuration(elapsedMinutes)}</span>
         <span>
-          {status === 'ok' && `${config.warningThreshold}m warning`}
-          {status === 'warning' && `${config.urgentThreshold - elapsedMinutes}m left`}
+          {status === 'normal' && `${config.warningMinutes}m warning`}
+          {status === 'warning' && `${config.maxMinutes - elapsedMinutes}m left`}
           {status === 'urgent' && 'Over time!'}
         </span>
       </div>

@@ -1,9 +1,5 @@
 import { supabase, isDemoMode } from '@/lib/supabase';
-import type { Database } from '@/types/database';
-
-type Badge = Database['public']['Tables']['badges']['Row'];
-type BadgeInsert = Database['public']['Tables']['badges']['Insert'];
-type BadgeTier = Database['public']['Enums']['badge_tier'];
+import type { Badge, BadgeTier } from '@/types/database';
 
 // Badge definitions (could be moved to database)
 export const badgeDefinitions = {

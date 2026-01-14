@@ -1,7 +1,7 @@
 // Health Records and Vaccination Tracking Service
 // Manages vaccinations, medications, vet info, and health conditions
 
-import { supabase } from './client';
+import { supabase } from '@/lib/supabase';
 
 // Vaccination types
 export type VaccinationType =
