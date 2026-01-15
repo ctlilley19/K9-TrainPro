@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { AddDogModal } from '@/components/dogs/AddDogModal';
 import {
   DragDropContext,
@@ -14,9 +14,10 @@ import { PageHeader } from '@/components/layout';
 import { Button } from '@/components/ui/Button';
 import { ActivityCard, QuickLogFAB, type ActivityDog } from '@/components/training';
 import { cn, activityConfig, type ActivityType } from '@/lib/utils';
-import { useTrainingBoard, useStartActivity, useEndActivity, useQuickLog, type TrainingBoardDog } from '@/hooks';
+import { useTrainingBoard, useStartActivity, useEndActivity, useQuickLog, type TrainingBoardDog, useActivityConfig } from '@/hooks';
 import { isDemoMode } from '@/lib/supabase';
 import { useUser } from '@/stores/authStore';
+import { ICON_REGISTRY } from '@/components/activities/IconBuilder';
 import {
   Dog,
   Filter,
@@ -32,6 +33,7 @@ import {
   Stethoscope,
   Loader2,
   AlertCircle,
+  Star,
 } from 'lucide-react';
 
 // Activity icons mapping with colors for enhanced styling
@@ -48,15 +50,22 @@ const activityIcons: Record<ActivityType, { icon: React.ReactNode; color: string
   medical: { icon: <Stethoscope size={16} />, color: '#f87171', glow: 'rgba(248,113,113,0.4)' },
 };
 
-// Column configuration
-const columnConfig: { id: ActivityType; title: string }[] = [
-  { id: 'kennel', title: 'Kenneled' },
-  { id: 'potty', title: 'Potty Break' },
-  { id: 'training', title: 'Training' },
-  { id: 'play', title: 'Play Time' },
-  { id: 'feeding', title: 'Feeding' },
-  { id: 'rest', title: 'Rest' },
-];
+// Default column configuration (built-in activities to show)
+const defaultColumnCodes = ['kennel', 'potty', 'training', 'play', 'feeding', 'rest'];
+
+// Fallback icons for built-in types
+const fallbackIcons: Record<string, React.ReactNode> = {
+  kennel: <Home size={16} />,
+  potty: <Droplets size={16} />,
+  training: <GraduationCap size={16} />,
+  play: <Gamepad2 size={16} />,
+  group_play: <Gamepad2 size={16} />,
+  feeding: <UtensilsCrossed size={16} />,
+  rest: <Moon size={16} />,
+  walk: <Dog size={16} />,
+  grooming: <Sparkles size={16} />,
+  medical: <Stethoscope size={16} />,
+};
 
 // Transform TrainingBoardDog to ActivityDog for the UI components
 function transformToActivityDog(dog: TrainingBoardDog): ActivityDog {
@@ -76,13 +85,57 @@ function transformToActivityDog(dog: TrainingBoardDog): ActivityDog {
 export default function TrainingBoardPage() {
   const user = useUser();
   const { data: boardData, isLoading, error, refetch } = useTrainingBoard();
+  const { activityConfigs, isLoading: configsLoading, getConfig } = useActivityConfig();
   const [isAddDogModalOpen, setIsAddDogModalOpen] = useState(false);
   const startActivity = useStartActivity();
   const endActivity = useEndActivity();
   const quickLog = useQuickLog();
 
+  // Build dynamic column configuration from activity configs
+  const columnConfig = useMemo(() => {
+    // Filter to show only activities that should be shown in quick log (main board activities)
+    const boardActivities = activityConfigs.filter((a) => a.showInQuickLog);
+
+    // Sort: put default columns first in order, then add any custom ones
+    const sortedActivities = boardActivities.sort((a, b) => {
+      const aIndex = defaultColumnCodes.indexOf(a.code);
+      const bIndex = defaultColumnCodes.indexOf(b.code);
+
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      return a.label.localeCompare(b.label);
+    });
+
+    return sortedActivities.map((config) => ({
+      id: config.code,
+      title: config.label,
+      color: config.color,
+      iconName: config.iconName,
+      isCustom: config.isCustom,
+      maxMinutes: config.maxMinutes,
+      warningMinutes: config.warningMinutes,
+    }));
+  }, [activityConfigs]);
+
+  // Helper to render icon for a column
+  const renderColumnIcon = (column: (typeof columnConfig)[0]) => {
+    // Try to get icon from registry (custom or built-in)
+    const IconComponent = ICON_REGISTRY[column.iconName]?.icon;
+    if (IconComponent) {
+      return <IconComponent size={16} />;
+    }
+    // Fallback to hardcoded icons
+    if (fallbackIcons[column.id]) {
+      return fallbackIcons[column.id];
+    }
+    // Default fallback
+    return <Star size={16} />;
+  };
+
   // Local state for optimistic updates during drag operations
-  const [columns, setColumns] = useState<Record<ActivityType, ActivityDog[]>>({
+  // Use Record<string, ...> to support both built-in and custom activity types
+  const [columns, setColumns] = useState<Record<string, ActivityDog[]>>({
     kennel: [],
     potty: [],
     training: [],
@@ -98,7 +151,7 @@ export default function TrainingBoardPage() {
   // Sync server data to local state
   useEffect(() => {
     if (boardData) {
-      const transformedData: Record<ActivityType, ActivityDog[]> = {
+      const transformedData: Record<string, ActivityDog[]> = {
         kennel: [],
         potty: [],
         training: [],
@@ -111,13 +164,20 @@ export default function TrainingBoardPage() {
         medical: [],
       };
 
+      // Add any custom activity types from config
+      for (const config of activityConfigs) {
+        if (!(config.code in transformedData)) {
+          transformedData[config.code] = [];
+        }
+      }
+
       for (const [activityType, dogs] of Object.entries(boardData)) {
-        transformedData[activityType as ActivityType] = dogs.map(transformToActivityDog);
+        transformedData[activityType] = dogs.map(transformToActivityDog);
       }
 
       setColumns(transformedData);
     }
-  }, [boardData]);
+  }, [boardData, activityConfigs]);
 
   const handleDragEnd = useCallback(
     async (result: DropResult) => {
@@ -134,8 +194,8 @@ export default function TrainingBoardPage() {
         return;
       }
 
-      const sourceColumn = source.droppableId as ActivityType;
-      const destColumn = destination.droppableId as ActivityType;
+      const sourceColumn = source.droppableId;
+      const destColumn = destination.droppableId;
 
       // Find the dog being moved
       const movedDog = columns[sourceColumn][source.index];
@@ -192,16 +252,16 @@ export default function TrainingBoardPage() {
   );
 
   const handleQuickLog = useCallback(
-    async (dogId: string, activityType: ActivityType, notes?: string) => {
+    async (dogId: string, activityType: string, notes?: string) => {
       // Find the dog in any column
       let foundDog: ActivityDog | null = null;
-      let sourceColumn: ActivityType | null = null;
+      let sourceColumn: string | null = null;
 
       for (const [column, dogs] of Object.entries(columns)) {
         const dog = dogs.find((d) => d.id === dogId);
         if (dog) {
           foundDog = dog;
-          sourceColumn = column as ActivityType;
+          sourceColumn = column;
           break;
         }
       }
@@ -261,7 +321,7 @@ export default function TrainingBoardPage() {
     async (dogId: string, note: string) => {
       setColumns((prev) => {
         const newColumns = { ...prev };
-        for (const column of Object.keys(newColumns) as ActivityType[]) {
+        for (const column of Object.keys(newColumns)) {
           newColumns[column] = newColumns[column].map((dog) =>
             dog.id === dogId ? { ...dog, notes: note } : dog
           );
@@ -274,7 +334,7 @@ export default function TrainingBoardPage() {
   );
 
   const handleEndActivity = useCallback(
-    async (dogId: string, currentColumn: ActivityType) => {
+    async (dogId: string, currentColumn: string) => {
       const dog = columns[currentColumn].find((d) => d.id === dogId);
       if (!dog || !dog.programId) return;
 
@@ -322,7 +382,7 @@ export default function TrainingBoardPage() {
     .map((d) => ({ id: d.id, name: d.name }));
 
   // Loading state
-  if (isLoading) {
+  if (isLoading || configsLoading) {
     return (
       <div className="h-[calc(100vh-8rem)] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -380,8 +440,10 @@ export default function TrainingBoardPage() {
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4 h-full">
           {columnConfig.map((column) => {
-            const config = activityConfig[column.id];
             const dogs = columns[column.id] || [];
+            // Use dynamic color from column config
+            const columnColor = column.color;
+            const glowColor = `${columnColor}66`; // Add transparency for glow
 
             return (
               <div key={column.id} className="flex-shrink-0 w-72 flex flex-col">
@@ -392,31 +454,31 @@ export default function TrainingBoardPage() {
                     'bg-surface-800/60 backdrop-blur-sm',
                     'border-t-2'
                   )}
-                  style={{ borderTopColor: activityIcons[column.id].color }}
+                  style={{ borderTopColor: columnColor }}
                 >
                   {/* Enhanced Activity Icon */}
                   <div
                     className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200"
                     style={{
-                      background: `linear-gradient(135deg, ${activityIcons[column.id].color}20, ${activityIcons[column.id].color}08)`,
-                      boxShadow: `0 0 12px ${activityIcons[column.id].glow}`,
+                      background: `linear-gradient(135deg, ${columnColor}20, ${columnColor}08)`,
+                      boxShadow: `0 0 12px ${glowColor}`,
                     }}
                   >
                     <span
                       style={{
-                        color: activityIcons[column.id].color,
-                        filter: `drop-shadow(0 0 4px ${activityIcons[column.id].glow})`,
+                        color: columnColor,
+                        filter: `drop-shadow(0 0 4px ${glowColor})`,
                       }}
                     >
-                      {activityIcons[column.id].icon}
+                      {renderColumnIcon(column)}
                     </span>
                   </div>
                   <span className="font-medium text-white text-sm">{column.title}</span>
                   <span
                     className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full"
                     style={{
-                      backgroundColor: `${activityIcons[column.id].color}15`,
-                      color: activityIcons[column.id].color,
+                      backgroundColor: `${columnColor}15`,
+                      color: columnColor,
                     }}
                   >
                     {dogs.length}
@@ -456,6 +518,13 @@ export default function TrainingBoardPage() {
                                   onAddPhoto={() => handleAddPhoto(dog.id)}
                                   onAddNote={(note) => handleAddNote(dog.id, note)}
                                   onEndActivity={() => handleEndActivity(dog.id, column.id)}
+                                  customConfig={{
+                                    code: column.id,
+                                    label: column.title,
+                                    color: column.color,
+                                    maxMinutes: column.maxMinutes,
+                                    warningMinutes: column.warningMinutes,
+                                  }}
                                 />
                               </div>
                             )}

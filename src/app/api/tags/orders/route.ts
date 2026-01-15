@@ -21,8 +21,9 @@ export async function GET(request: NextRequest) {
       .from('tag_orders')
       .select(`
         *,
-        tags:tags(count),
-        vendor:vendors(name, code)
+        tags:tags(id, tag_code, status),
+        vendor:vendors(name, code),
+        design_template:tag_design_templates(id, name, front_image_url)
       `)
       .eq('facility_id', facilityId)
       .order('created_at', { ascending: false });

@@ -6,7 +6,7 @@ import { cn, getTimerStatus, activityConfig, type ActivityType } from '@/lib/uti
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-import { ActivityTimer, TimerProgressBar } from './ActivityTimer';
+import { ActivityTimer, TimerProgressBar, type CustomActivityConfig } from './ActivityTimer';
 import {
   Camera,
   MessageSquare,
@@ -31,13 +31,14 @@ export interface ActivityDog {
 
 interface ActivityCardProps {
   dog: ActivityDog;
-  activityType: ActivityType;
+  activityType: ActivityType | string;
   isDragging?: boolean;
   onAddPhoto?: () => void;
   onAddNote?: (note: string) => void;
   onEndActivity?: () => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dragHandleProps?: any;
+  customConfig?: CustomActivityConfig;
 }
 
 export function ActivityCard({
@@ -48,13 +49,25 @@ export function ActivityCard({
   onAddNote,
   onEndActivity,
   dragHandleProps,
+  customConfig,
 }: ActivityCardProps) {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [note, setNote] = useState('');
   const [showMenu, setShowMenu] = useState(false);
 
   const elapsedMinutes = Math.floor((Date.now() - dog.startedAt.getTime()) / 60000);
-  const status = getTimerStatus(elapsedMinutes, activityType);
+
+  // Use custom config if provided, otherwise fall back to built-in
+  const isBuiltIn = activityType in activityConfig;
+  const builtInConfig = isBuiltIn ? activityConfig[activityType as ActivityType] : null;
+  const config = customConfig || builtInConfig || { maxMinutes: 60, warningMinutes: 45 };
+
+  // Calculate status based on config
+  const status = elapsedMinutes >= config.maxMinutes
+    ? 'urgent'
+    : elapsedMinutes >= config.warningMinutes
+      ? 'warning'
+      : 'normal';
 
   const handleNoteSubmit = () => {
     if (note.trim() && onAddNote) {
@@ -143,7 +156,7 @@ export function ActivityCard({
 
         {/* Timer */}
         <div className="mb-3">
-          <ActivityTimer startedAt={dog.startedAt} activityType={activityType} size="sm" />
+          <ActivityTimer startedAt={dog.startedAt} activityType={activityType} size="sm" customConfig={customConfig} />
         </div>
 
         {/* Progress Bar */}
@@ -151,6 +164,7 @@ export function ActivityCard({
           startedAt={dog.startedAt}
           activityType={activityType}
           className="mb-3"
+          customConfig={customConfig}
         />
 
         {/* Notes Preview */}
@@ -214,17 +228,30 @@ export function ActivityCard({
 // Compact version for lists
 interface ActivityCardCompactProps {
   dog: ActivityDog;
-  activityType: ActivityType;
+  activityType: ActivityType | string;
   onClick?: () => void;
+  customConfig?: CustomActivityConfig;
 }
 
 export function ActivityCardCompact({
   dog,
   activityType,
   onClick,
+  customConfig,
 }: ActivityCardCompactProps) {
   const elapsedMinutes = Math.floor((Date.now() - dog.startedAt.getTime()) / 60000);
-  const status = getTimerStatus(elapsedMinutes, activityType);
+
+  // Use custom config if provided, otherwise fall back to built-in
+  const isBuiltIn = activityType in activityConfig;
+  const builtInConfig = isBuiltIn ? activityConfig[activityType as ActivityType] : null;
+  const config = customConfig || builtInConfig || { maxMinutes: 60, warningMinutes: 45 };
+
+  // Calculate status based on config
+  const status = elapsedMinutes >= config.maxMinutes
+    ? 'urgent'
+    : elapsedMinutes >= config.warningMinutes
+      ? 'warning'
+      : 'normal';
 
   return (
     <button
@@ -244,7 +271,7 @@ export function ActivityCardCompact({
         <p className="text-sm font-medium text-white">{dog.name}</p>
         <p className="text-xs text-surface-500">{dog.breed}</p>
       </div>
-      <ActivityTimer startedAt={dog.startedAt} activityType={activityType} size="sm" />
+      <ActivityTimer startedAt={dog.startedAt} activityType={activityType} size="sm" customConfig={customConfig} />
     </button>
   );
 }

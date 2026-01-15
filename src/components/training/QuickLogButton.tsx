@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { cn, activityConfig, type ActivityType } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-import { ActivityBadge } from '@/components/ui/Badge';
+import { useActivityConfig } from '@/hooks/useActivityConfig';
+import { ICON_REGISTRY } from '@/components/activities/IconBuilder';
 import {
   Home,
   Droplets,
@@ -16,11 +17,13 @@ import {
   Sparkles,
   Stethoscope,
   Plus,
-  Clock,
   X,
+  Star,
+  Loader2,
 } from 'lucide-react';
 
-const activityIcons: Record<ActivityType, React.ReactNode> = {
+// Fallback icons for built-in types
+const fallbackIcons: Record<string, React.ReactNode> = {
   kennel: <Home size={18} />,
   potty: <Droplets size={18} />,
   training: <GraduationCap size={18} />,
@@ -33,14 +36,14 @@ const activityIcons: Record<ActivityType, React.ReactNode> = {
   medical: <Stethoscope size={18} />,
 };
 
-interface Dog {
+interface DogItem {
   id: string;
   name: string;
 }
 
 interface QuickLogButtonProps {
-  dogs: Dog[];
-  onLog: (dogId: string, activityType: ActivityType, notes?: string) => void;
+  dogs: DogItem[];
+  onLog: (dogId: string, activityType: string, notes?: string, customTypeId?: string) => void;
   variant?: 'primary' | 'outline' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
 }
@@ -53,17 +56,19 @@ export function QuickLogButton({
 }: QuickLogButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState<'dog' | 'activity'>('dog');
-  const [selectedDog, setSelectedDog] = useState<Dog | null>(null);
+  const [selectedDog, setSelectedDog] = useState<DogItem | null>(null);
   const [notes, setNotes] = useState('');
 
-  const handleSelectDog = (dog: Dog) => {
+  const { activityConfigs, isLoading, getQuickLogActivities } = useActivityConfig();
+
+  const handleSelectDog = (dog: DogItem) => {
     setSelectedDog(dog);
     setStep('activity');
   };
 
-  const handleSelectActivity = (activityType: ActivityType) => {
+  const handleSelectActivity = (activityCode: string, customTypeId?: string) => {
     if (selectedDog) {
-      onLog(selectedDog.id, activityType, notes || undefined);
+      onLog(selectedDog.id, activityCode, notes || undefined, customTypeId);
       handleClose();
     }
   };
@@ -75,8 +80,28 @@ export function QuickLogButton({
     setNotes('');
   };
 
-  const commonActivities: ActivityType[] = ['potty', 'training', 'play', 'feeding', 'rest', 'kennel'];
-  const otherActivities: ActivityType[] = ['walk', 'group_play', 'grooming', 'medical'];
+  // Get activities to show in quick log, separated by built-in vs custom
+  const quickLogActivities = getQuickLogActivities();
+  const builtInActivities = quickLogActivities.filter((a) => !a.isCustom);
+  const customActivities = quickLogActivities.filter((a) => a.isCustom);
+
+  // Split built-in into common and other
+  const commonCodes = ['potty', 'training', 'play', 'feeding', 'rest', 'kennel'];
+  const commonActivities = builtInActivities.filter((a) => commonCodes.includes(a.code));
+  const otherBuiltIn = builtInActivities.filter((a) => !commonCodes.includes(a.code));
+
+  // Helper to render icon
+  const renderIcon = (iconName: string, color: string, activityCode: string) => {
+    const IconComponent = ICON_REGISTRY[iconName]?.icon;
+    if (IconComponent) {
+      return <IconComponent size={18} style={{ color }} />;
+    }
+    // Fallback to hardcoded icons for built-in types
+    if (fallbackIcons[activityCode]) {
+      return fallbackIcons[activityCode];
+    }
+    return <Star size={18} style={{ color }} />;
+  };
 
   return (
     <>
@@ -97,7 +122,6 @@ export function QuickLogButton({
       >
         {step === 'dog' ? (
           <div className="space-y-4">
-            {/* Search input could be added here */}
             <div className="grid grid-cols-2 gap-2 max-h-[400px] overflow-y-auto">
               {dogs.map((dog) => (
                 <button
@@ -113,6 +137,10 @@ export function QuickLogButton({
               ))}
             </div>
           </div>
+        ) : isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-brand-400" />
+          </div>
         ) : (
           <div className="space-y-6">
             {/* Back button */}
@@ -125,56 +153,88 @@ export function QuickLogButton({
             </button>
 
             {/* Common Activities */}
-            <div>
-              <h4 className="text-sm font-medium text-surface-400 mb-3">Common Activities</h4>
-              <div className="grid grid-cols-3 gap-2">
-                {commonActivities.map((activityType) => {
-                  const config = activityConfig[activityType];
-                  return (
+            {commonActivities.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-surface-400 mb-3">Common Activities</h4>
+                <div className="grid grid-cols-3 gap-2">
+                  {commonActivities.map((activity) => (
                     <button
-                      key={activityType}
-                      onClick={() => handleSelectActivity(activityType)}
+                      key={activity.code}
+                      onClick={() => handleSelectActivity(activity.code)}
                       className={cn(
                         'flex flex-col items-center gap-2 p-4 rounded-xl border transition-all',
                         'bg-surface-800/50 border-surface-700',
                         'hover:border-brand-500/50 hover:bg-surface-800'
                       )}
                     >
-                      <div className={cn('p-2 rounded-lg', config.bgColor, config.color)}>
-                        {activityIcons[activityType]}
+                      <div
+                        className="p-2 rounded-lg"
+                        style={{ backgroundColor: activity.color + '30' }}
+                      >
+                        {renderIcon(activity.iconName, activity.color, activity.code)}
                       </div>
-                      <span className="text-sm font-medium text-white">{config.label}</span>
+                      <span className="text-sm font-medium text-white">{activity.label}</span>
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Other Activities */}
-            <div>
-              <h4 className="text-sm font-medium text-surface-400 mb-3">Other Activities</h4>
-              <div className="grid grid-cols-4 gap-2">
-                {otherActivities.map((activityType) => {
-                  const config = activityConfig[activityType];
-                  return (
+            {/* Other Built-in Activities */}
+            {otherBuiltIn.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-surface-400 mb-3">Other Activities</h4>
+                <div className="grid grid-cols-4 gap-2">
+                  {otherBuiltIn.map((activity) => (
                     <button
-                      key={activityType}
-                      onClick={() => handleSelectActivity(activityType)}
+                      key={activity.code}
+                      onClick={() => handleSelectActivity(activity.code)}
                       className={cn(
                         'flex flex-col items-center gap-2 p-3 rounded-xl border transition-all',
                         'bg-surface-800/50 border-surface-700',
                         'hover:border-brand-500/50 hover:bg-surface-800'
                       )}
                     >
-                      <div className={cn('p-2 rounded-lg', config.bgColor, config.color)}>
-                        {activityIcons[activityType]}
+                      <div
+                        className="p-2 rounded-lg"
+                        style={{ backgroundColor: activity.color + '30' }}
+                      >
+                        {renderIcon(activity.iconName, activity.color, activity.code)}
                       </div>
-                      <span className="text-xs font-medium text-white">{config.label}</span>
+                      <span className="text-xs font-medium text-white">{activity.label}</span>
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Custom Activities */}
+            {customActivities.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-surface-400 mb-3">Custom Activities</h4>
+                <div className="grid grid-cols-3 gap-2">
+                  {customActivities.map((activity) => (
+                    <button
+                      key={activity.code}
+                      onClick={() => handleSelectActivity(activity.code, activity.customTypeId)}
+                      className={cn(
+                        'flex flex-col items-center gap-2 p-4 rounded-xl border transition-all',
+                        'bg-surface-800/50 border-surface-700',
+                        'hover:border-brand-500/50 hover:bg-surface-800'
+                      )}
+                    >
+                      <div
+                        className="p-2 rounded-lg"
+                        style={{ backgroundColor: activity.color + '30' }}
+                      >
+                        {renderIcon(activity.iconName, activity.color, activity.code)}
+                      </div>
+                      <span className="text-sm font-medium text-white">{activity.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Notes */}
             <div>
@@ -197,8 +257,8 @@ export function QuickLogButton({
 
 // Floating action button version
 interface QuickLogFABProps {
-  dogs: Dog[];
-  onLog: (dogId: string, activityType: ActivityType, notes?: string) => void;
+  dogs: DogItem[];
+  onLog: (dogId: string, activityType: string, notes?: string, customTypeId?: string) => void;
 }
 
 export function QuickLogFAB({ dogs, onLog }: QuickLogFABProps) {

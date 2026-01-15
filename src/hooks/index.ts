@@ -210,3 +210,6 @@ export {
   useDogKennelActivityLogs,
   useTodayKennelActivityLogs,
 } from './useData';
+
+// Activity Configuration
+export { useActivityConfig, getTimerStatusFromConfig } from './useActivityConfig';

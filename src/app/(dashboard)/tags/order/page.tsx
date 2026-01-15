@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
 import { PageHeader } from '@/components/layout';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { StatusBadge } from '@/components/ui/Badge';
 import { useFacility, useUser } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
 import {
@@ -19,6 +22,9 @@ import {
   Info,
   Sparkles,
   ArrowLeft,
+  Palette,
+  Star,
+  ImageIcon,
 } from 'lucide-react';
 
 interface PricingTier {
@@ -26,6 +32,15 @@ interface PricingTier {
   maxQuantity: number | null;
   unitPrice: number;
   displayPrice: string;
+}
+
+interface DesignTemplate {
+  id: string;
+  name: string;
+  design_type: string;
+  front_image_url: string | null;
+  back_image_url: string | null;
+  is_default: boolean;
 }
 
 export default function OrderTagsPage() {
@@ -40,6 +55,9 @@ export default function OrderTagsPage() {
     default: PricingTier[];
     custom: PricingTier[];
   } | null>(null);
+  const [customDesigns, setCustomDesigns] = useState<DesignTemplate[]>([]);
+  const [selectedDesignId, setSelectedDesignId] = useState<string | null>(null);
+  const [loadingDesigns, setLoadingDesigns] = useState(false);
 
   // Shipping form
   const [shipping, setShipping] = useState({
@@ -84,6 +102,31 @@ export default function OrderTagsPage() {
     fetchPricing();
   }, []);
 
+  // Fetch custom designs when facility is available
+  useEffect(() => {
+    async function fetchDesigns() {
+      if (!facility?.id) return;
+      setLoadingDesigns(true);
+      try {
+        const response = await fetch(`/api/tags/designs?facilityId=${facility.id}`);
+        const data = await response.json();
+        if (data.designs) {
+          setCustomDesigns(data.designs);
+          // Auto-select default design if exists
+          const defaultDesign = data.designs.find((d: DesignTemplate) => d.is_default);
+          if (defaultDesign) {
+            setSelectedDesignId(defaultDesign.id);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching designs:', error);
+      } finally {
+        setLoadingDesigns(false);
+      }
+    }
+    fetchDesigns();
+  }, [facility?.id]);
+
   // Check tier access
   const tier = facility?.subscription_tier || 'starter';
   const canOrderCustom = ['starter', 'professional', 'enterprise'].includes(tier);
@@ -115,8 +158,15 @@ export default function OrderTagsPage() {
   const handleSubmit = async () => {
     if (!facility?.id || !user?.id) return;
 
+    // Require design selection for custom type
+    if (designType === 'custom' && !selectedDesignId) {
+      alert('Please select or create a custom design first.');
+      return;
+    }
+
     setIsLoading(true);
     try {
+      const selectedDesign = customDesigns.find((d) => d.id === selectedDesignId);
       const response = await fetch('/api/tags/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -125,7 +175,8 @@ export default function OrderTagsPage() {
           userId: user.id,
           quantity,
           designType,
-          productType: designType === 'custom' ? 'double_sided' : 'single_sided',
+          productType: designType === 'custom' ? (selectedDesign?.design_type || 'double_sided') : 'single_sided',
+          designTemplateId: designType === 'custom' ? selectedDesignId : null,
           shippingAddress: {
             name: shipping.name || user.name,
             company: shipping.company,
@@ -157,9 +208,12 @@ export default function OrderTagsPage() {
   };
 
   const isValidForm =
-    shipping.name || user?.name
-      ? shipping.line1 && shipping.city && shipping.state && shipping.zip
-      : false;
+    (shipping.name || user?.name) &&
+    shipping.line1 &&
+    shipping.city &&
+    shipping.state &&
+    shipping.zip &&
+    (designType === 'default' || selectedDesignId);
 
   if (!canOrder) {
     return (
@@ -241,6 +295,87 @@ export default function OrderTagsPage() {
                   </p>
                 </button>
               </div>
+
+              {/* Custom Design Selection */}
+              {designType === 'custom' && canOrderCustom && (
+                <div className="mt-6 pt-6 border-t border-surface-700">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium text-surface-300">Select Your Design</h4>
+                    <Link href="/tags/designs">
+                      <Button variant="ghost" size="sm" leftIcon={<Palette size={14} />}>
+                        Manage Designs
+                      </Button>
+                    </Link>
+                  </div>
+
+                  {loadingDesigns ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {[1, 2, 3].map((i) => (
+                        <div
+                          key={i}
+                          className="aspect-square rounded-xl bg-surface-800 animate-pulse"
+                        />
+                      ))}
+                    </div>
+                  ) : customDesigns.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {customDesigns.map((design) => (
+                        <button
+                          key={design.id}
+                          onClick={() => setSelectedDesignId(design.id)}
+                          className={cn(
+                            'relative rounded-xl border-2 overflow-hidden transition-all',
+                            selectedDesignId === design.id
+                              ? 'border-brand-500 ring-2 ring-brand-500/30'
+                              : 'border-surface-700 hover:border-surface-600'
+                          )}
+                        >
+                          <div className="aspect-square bg-gradient-to-br from-surface-800 to-surface-900 flex items-center justify-center p-4">
+                            {design.front_image_url ? (
+                              <div className="w-16 h-16 rounded-full border-2 border-surface-600 overflow-hidden relative bg-surface-800">
+                                <Image
+                                  src={design.front_image_url}
+                                  alt={design.name}
+                                  fill
+                                  className="object-contain p-1"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-16 h-16 rounded-full border-2 border-surface-600 bg-surface-800 flex items-center justify-center">
+                                <ImageIcon size={20} className="text-surface-600" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-2 bg-surface-800">
+                            <p className="text-xs font-medium text-white truncate">{design.name}</p>
+                            {design.is_default && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <Star size={10} className="text-amber-400" />
+                                <span className="text-[10px] text-surface-400">Default</span>
+                              </div>
+                            )}
+                          </div>
+                          {selectedDesignId === design.id && (
+                            <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-brand-500 flex items-center justify-center">
+                              <Check size={12} className="text-white" />
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 bg-surface-800/50 rounded-xl">
+                      <Palette size={32} className="mx-auto text-surface-600 mb-2" />
+                      <p className="text-sm text-surface-400 mb-3">No custom designs yet</p>
+                      <Link href="/tags/designs">
+                        <Button variant="primary" size="sm">
+                          Create Your First Design
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -377,9 +512,16 @@ export default function OrderTagsPage() {
             <CardContent>
               <div className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-surface-400">
-                    {quantity} × {designType === 'custom' ? 'Custom' : 'Default'} Tags
-                  </span>
+                  <div>
+                    <span className="text-surface-400">
+                      {quantity} × {designType === 'custom' ? 'Custom' : 'Default'} Tags
+                    </span>
+                    {designType === 'custom' && selectedDesignId && (
+                      <p className="text-xs text-surface-500 mt-0.5">
+                        Design: {customDesigns.find((d) => d.id === selectedDesignId)?.name || 'Selected'}
+                      </p>
+                    )}
+                  </div>
                   <span className="text-white">
                     ${((unitPrice * quantity) / 100).toFixed(2)}
                   </span>

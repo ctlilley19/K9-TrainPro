@@ -4,12 +4,23 @@ import { useState, useEffect } from 'react';
 import { cn, formatDuration, getTimerStatus, activityConfig, type ActivityType } from '@/lib/utils';
 import { Clock, AlertTriangle, AlertCircle } from 'lucide-react';
 
+// Custom config shape that can override built-in configs
+export interface CustomActivityConfig {
+  code: string;
+  label: string;
+  color: string;
+  bgColor?: string;
+  maxMinutes: number;
+  warningMinutes: number;
+}
+
 interface ActivityTimerProps {
   startedAt: Date;
-  activityType: ActivityType;
+  activityType: ActivityType | string;
   size?: 'sm' | 'md' | 'lg';
   showLabel?: boolean;
   className?: string;
+  customConfig?: CustomActivityConfig;
 }
 
 export function ActivityTimer({
@@ -18,6 +29,7 @@ export function ActivityTimer({
   size = 'md',
   showLabel = false,
   className,
+  customConfig,
 }: ActivityTimerProps) {
   const [elapsedMinutes, setElapsedMinutes] = useState(() =>
     Math.floor((Date.now() - startedAt.getTime()) / 60000)
@@ -31,8 +43,24 @@ export function ActivityTimer({
     return () => clearInterval(interval);
   }, [startedAt]);
 
-  const status = getTimerStatus(elapsedMinutes, activityType);
-  const config = activityConfig[activityType];
+  // Use custom config if provided, otherwise fall back to built-in
+  const isBuiltIn = activityType in activityConfig;
+  const builtInConfig = isBuiltIn ? activityConfig[activityType as ActivityType] : null;
+
+  const config = customConfig || builtInConfig || {
+    label: activityType,
+    maxMinutes: 60,
+    warningMinutes: 45,
+    color: 'text-gray-400',
+    bgColor: 'bg-gray-500/15',
+  };
+
+  // Calculate status based on config
+  const status = elapsedMinutes >= config.maxMinutes
+    ? 'urgent'
+    : elapsedMinutes >= config.warningMinutes
+      ? 'warning'
+      : 'normal';
 
   const sizeClasses = {
     sm: 'px-2 py-1 text-xs gap-1.5',
@@ -48,6 +76,12 @@ export function ActivityTimer({
 
   const StatusIcon = status === 'urgent' ? AlertCircle : status === 'warning' ? AlertTriangle : Clock;
 
+  // Check if color is a hex color (custom) or tailwind class (built-in)
+  const isHexColor = config.color?.startsWith('#');
+  const colorStyle = isHexColor && status === 'normal'
+    ? { color: config.color, backgroundColor: `${config.color}20` }
+    : undefined;
+
   return (
     <div
       className={cn(
@@ -57,9 +91,10 @@ export function ActivityTimer({
           ? 'bg-red-500/20 text-red-400 animate-pulse'
           : status === 'warning'
           ? 'bg-yellow-500/20 text-yellow-400'
-          : cn(config.bgColor, config.color),
+          : !isHexColor && cn(config.bgColor, config.color),
         className
       )}
+      style={colorStyle}
     >
       <StatusIcon
         size={iconSizes[size]}
@@ -80,14 +115,16 @@ export function ActivityTimer({
 
 interface TimerProgressBarProps {
   startedAt: Date;
-  activityType: ActivityType;
+  activityType: ActivityType | string;
   className?: string;
+  customConfig?: CustomActivityConfig;
 }
 
 export function TimerProgressBar({
   startedAt,
   activityType,
   className,
+  customConfig,
 }: TimerProgressBarProps) {
   const [elapsedMinutes, setElapsedMinutes] = useState(() =>
     Math.floor((Date.now() - startedAt.getTime()) / 60000)
@@ -101,8 +138,22 @@ export function TimerProgressBar({
     return () => clearInterval(interval);
   }, [startedAt]);
 
-  const config = activityConfig[activityType];
-  const status = getTimerStatus(elapsedMinutes, activityType);
+  // Use custom config if provided, otherwise fall back to built-in
+  const isBuiltIn = activityType in activityConfig;
+  const builtInConfig = isBuiltIn ? activityConfig[activityType as ActivityType] : null;
+
+  const config = customConfig || builtInConfig || {
+    label: activityType,
+    maxMinutes: 60,
+    warningMinutes: 45,
+  };
+
+  // Calculate status based on config
+  const status = elapsedMinutes >= config.maxMinutes
+    ? 'urgent'
+    : elapsedMinutes >= config.warningMinutes
+      ? 'warning'
+      : 'normal';
 
   // Calculate progress percentage (max at urgent threshold)
   const maxTime = config.maxMinutes;
