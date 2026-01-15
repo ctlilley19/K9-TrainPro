@@ -581,7 +581,7 @@ export default function BookingPage() {
             Trusted by 500+ families in Southern Maryland
           </p>
           <p className="text-surface-500 text-xs mt-4">
-            K9 Training Academy • (301) 555-K9K9 • info@k9trainpro.com
+            K9 Training Academy • (301) 555-K9K9 • info@k9protrain.com
           </p>
         </div>
       </footer>

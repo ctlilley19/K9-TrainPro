@@ -1,4 +1,4 @@
--- K9 TrainPro Initial Schema Migration
+-- K9 ProTrain Initial Schema Migration
 -- Creates all core tables, enums, and indexes
 
 -- ============================================================================

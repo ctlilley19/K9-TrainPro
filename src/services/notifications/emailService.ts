@@ -227,7 +227,7 @@ export const emailService = {
     // Example with SendGrid:
     // await sgMail.send({
     //   to: params.to,
-    //   from: 'noreply@k9trainpro.com',
+    //   from: 'noreply@k9protrain.com',
     //   subject: params.subject,
     //   templateId: templateIds[params.template],
     //   dynamicTemplateData: params.data,

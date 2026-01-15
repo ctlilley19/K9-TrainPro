@@ -13,7 +13,7 @@ export default function AuthLayout({
           <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center">
             <Dog size={28} className="text-white" />
           </div>
-          <span className="text-2xl font-bold text-white">K9 TrainPro</span>
+          <span className="text-2xl font-bold text-white">K9 ProTrain</span>
         </div>
 
         <div>

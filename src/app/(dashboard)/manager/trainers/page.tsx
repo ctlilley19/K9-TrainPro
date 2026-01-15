@@ -30,7 +30,7 @@ const demoTrainers = [
   {
     id: 't1',
     name: 'Sarah Johnson',
-    email: 'sarah@k9trainpro.com',
+    email: 'sarah@k9protrain.com',
     phone: '(301) 555-1234',
     role: 'lead_trainer',
     status: 'active',
@@ -56,7 +56,7 @@ const demoTrainers = [
   {
     id: 't2',
     name: 'John Smith',
-    email: 'john@k9trainpro.com',
+    email: 'john@k9protrain.com',
     phone: '(301) 555-2345',
     role: 'trainer',
     status: 'active',
@@ -82,7 +82,7 @@ const demoTrainers = [
   {
     id: 't3',
     name: 'Mike Wilson',
-    email: 'mike@k9trainpro.com',
+    email: 'mike@k9protrain.com',
     phone: '(301) 555-3456',
     role: 'trainer',
     status: 'active',
@@ -108,7 +108,7 @@ const demoTrainers = [
   {
     id: 't4',
     name: 'Emily Davis',
-    email: 'emily@k9trainpro.com',
+    email: 'emily@k9protrain.com',
     phone: '(301) 555-4567',
     role: 'trainer',
     status: 'inactive',

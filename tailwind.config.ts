@@ -9,7 +9,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // K9 TrainPro Brand Colors
+        // K9 ProTrain Brand Colors
         brand: {
           50: '#fffbeb',
           100: '#fef3c7',

@@ -1,4 +1,4 @@
--- K9 TrainPro Storage Buckets
+-- K9 ProTrain Storage Buckets
 -- Configure Supabase Storage for media uploads
 
 -- ============================================================================

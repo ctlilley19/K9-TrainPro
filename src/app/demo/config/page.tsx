@@ -86,7 +86,7 @@ export default function DemoConfigPage() {
         <div className="w-16 h-16 rounded-2xl bg-brand-500 flex items-center justify-center shadow-glow-amber mb-4 mx-auto">
           <Dog size={32} className="text-white" />
         </div>
-        <h1 className="text-3xl font-bold text-white mb-2">K9 TrainPro Demo</h1>
+        <h1 className="text-3xl font-bold text-white mb-2">K9 ProTrain Demo</h1>
         <p className="text-surface-400 max-w-md">
           Choose a persona to explore the platform from different perspectives.
         </p>

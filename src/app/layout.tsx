@@ -4,8 +4,8 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'K9 TrainPro - Professional Dog Training Management',
-    template: '%s | K9 TrainPro',
+    default: 'K9 ProTrain - Professional Dog Training Management',
+    template: '%s | K9 ProTrain',
   },
   description:
     'Comprehensive SaaS platform for professional dog training facilities. Real-time updates, automated reports, gamification, and more.',
@@ -21,14 +21,14 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    title: 'K9 TrainPro - Professional Dog Training Management',
+    title: 'K9 ProTrain - Professional Dog Training Management',
     description:
       'Comprehensive SaaS platform for professional dog training facilities.',
-    siteName: 'K9 TrainPro',
+    siteName: 'K9 ProTrain',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'K9 TrainPro',
+    title: 'K9 ProTrain',
     description:
       'Professional dog training management platform with real-time updates and gamification.',
   },

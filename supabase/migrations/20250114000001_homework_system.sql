@@ -1,4 +1,4 @@
--- K9 TrainPro Homework Assignment System
+-- K9 ProTrain Homework Assignment System
 -- Enables trainers to assign homework to pet parents and track completion
 
 -- ============================================================================

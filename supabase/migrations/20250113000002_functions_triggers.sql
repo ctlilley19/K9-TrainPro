@@ -1,4 +1,4 @@
--- K9 TrainPro Functions and Triggers Migration
+-- K9 ProTrain Functions and Triggers Migration
 -- Database functions, triggers, and stored procedures
 
 -- ============================================================================

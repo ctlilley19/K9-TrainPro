@@ -1,4 +1,4 @@
-# K9 TrainPro
+# K9 ProTrain
 
 ## The Trust & Transparency Platform for Professional Pet Care
 
@@ -10,7 +10,7 @@
 
 ## Mission Statement
 
-K9 TrainPro solves one problem across all pet care services:
+K9 ProTrain solves one problem across all pet care services:
 
 > **"Prove you took care of my dog."**
 
@@ -98,11 +98,11 @@ Whether it's training, walking, or sitting - pet parents want **PROOF** and **PE
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      K9 TRAINPRO ECOSYSTEM                       │
+│                      K9 PROTRAIN ECOSYSTEM                       │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │                      ┌─────────────────┐                        │
-│                      │   K9 TRAINPRO   │                        │
+│                      │   K9 PROTRAIN   │                        │
 │                      │   CORE PLATFORM │                        │
 │                      └────────┬────────┘                        │
 │                               │                                  │
@@ -141,7 +141,7 @@ Whether it's training, walking, or sitting - pet parents want **PROOF** and **PE
 │                    PRODUCT EVOLUTION                             │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│   v1.0  K9 TrainPro                                             │
+│   v1.0  K9 ProTrain                                             │
 │         └── Dog trainers, walkers, sitters (B2B)               │
 │         └── Dogs only                                           │
 │         └── Business accounts                                   │
@@ -149,7 +149,7 @@ Whether it's training, walking, or sitting - pet parents want **PROOF** and **PE
 │                                                                  │
 │              ↓                                                   │
 │                                                                  │
-│   v1.5  K9 TrainPro + Family Accounts                          │
+│   v1.5  K9 ProTrain + Family Accounts                          │
 │         └── Add B2C family accounts                            │
 │         └── Pet owners can subscribe directly                  │
 │         └── Freemium model                                      │
@@ -182,7 +182,7 @@ Whether it's training, walking, or sitting - pet parents want **PROOF** and **PE
 
 ## Account Types
 
-K9 TrainPro supports two distinct account types:
+K9 ProTrain supports two distinct account types:
 
 ### Business Accounts (B2B)
 
@@ -769,13 +769,13 @@ Every dog, kennel, station, and home has a unique identifier encoded in both QR 
 ### QR/NFC Data Format
 
 ```
-URL Format: https://app.k9trainpro.com/tap/{type}/{uuid}
+URL Format: https://app.k9protrain.com/tap/{type}/{uuid}
 
 Examples:
-- Dog:     https://app.k9trainpro.com/tap/dog/a1b2c3d4-e5f6-...
-- Kennel:  https://app.k9trainpro.com/tap/kennel/b2c3d4e5-f6a7-...
-- Station: https://app.k9trainpro.com/tap/station/c3d4e5f6-a7b8-...
-- Home:    https://app.k9trainpro.com/tap/home/d4e5f6a7-b8c9-...
+- Dog:     https://app.k9protrain.com/tap/dog/a1b2c3d4-e5f6-...
+- Kennel:  https://app.k9protrain.com/tap/kennel/b2c3d4e5-f6a7-...
+- Station: https://app.k9protrain.com/tap/station/c3d4e5f6-a7b8-...
+- Home:    https://app.k9protrain.com/tap/home/d4e5f6a7-b8c9-...
 ```
 
 ### Quick Action Sheet (When Tag Scanned)
@@ -804,7 +804,7 @@ Family Pro subscribers get a digital QR code they can display on their phone scr
 
 ```
 ┌─────────────────────────────────────┐
-│  K9 TrainPro App                    │
+│  K9 ProTrain App                    │
 │                                     │
 │  ┌─────────────────────────────┐   │
 │  │                             │   │
@@ -846,7 +846,7 @@ Users can generate and print their own QR codes from within the app - no physica
 │  │                                                          │   │
 │  │              [GENERATED QR CODE]                        │   │
 │  │                                                          │   │
-│  │              app.k9trainpro.com/tap/dog/abc123          │   │
+│  │              app.k9protrain.com/tap/dog/abc123          │   │
 │  │                                                          │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                  │
@@ -1101,7 +1101,7 @@ ZEUS'S DAY SO FAR:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  K9 TRAINPRO                              Welcome, Sarah        │
+│  K9 PROTRAIN                              Welcome, Sarah        │
 ├─────────────────────────────────────────────────────────────────┤
 │  [My Pets] [Photos] [Progress] [Messages] [Care Team]           │
 ├─────────────────────────────────────────────────────────────────┤
@@ -1139,7 +1139,7 @@ Family accounts are for pet owners who want to manage their own pet's care witho
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  K9 TRAINPRO                              Welcome, Sarah        │
+│  K9 PROTRAIN                              Welcome, Sarah        │
 ├─────────────────────────────────────────────────────────────────┤
 │  [My Pets] [Activity] [Photos] [Care Team] [Tags]               │
 ├─────────────────────────────────────────────────────────────────┤
@@ -1758,7 +1758,7 @@ When a dog's tag is scanned, the system uses smart routing to show the right inf
 ### QR/NFC Tag Scanning Flow
 
 ```
-Someone scans app.k9trainpro.com/tag/ABC123
+Someone scans app.k9protrain.com/tag/ABC123
                 ↓
          Are they logged in?
                 ↓
@@ -1892,7 +1892,7 @@ Simplified navigation to reduce clicks and cognitive load.
 ## File Structure
 
 ```
-k9-trainpro/
+k9-protrain/
 ├── app/
 │   ├── (auth)/
 │   │   ├── login/
@@ -2123,7 +2123,7 @@ Flagged accounts get upgrade prompts.
 
 ## Summary
 
-K9 TrainPro is a unified platform for pet care transparency:
+K9 ProTrain is a unified platform for pet care transparency:
 
 **For Businesses (B2B):**
 - Trainers: Training board, activity logging, auto reports, badges
@@ -2140,6 +2140,6 @@ K9 TrainPro is a unified platform for pet care transparency:
 
 ---
 
-*K9 TrainPro - Lazy E Holdings LLC*
+*K9 ProTrain - Lazy E Holdings LLC*
 *USMC Veteran-Owned*
 *"Time is the one resource you can't get back."*

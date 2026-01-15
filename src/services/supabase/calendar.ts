@@ -1,4 +1,4 @@
-// Calendar Service Layer for K9 TrainPro
+// Calendar Service Layer for K9 ProTrain
 // Handles Board & Train stays, appointments, and schedule management
 
 import { supabase } from '@/lib/supabase';

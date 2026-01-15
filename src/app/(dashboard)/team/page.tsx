@@ -20,7 +20,7 @@ const teamMembers = [
   {
     id: '1',
     name: 'Sarah Johnson',
-    email: 'sarah@k9trainpro.com',
+    email: 'sarah@k9protrain.com',
     phone: '(555) 123-4567',
     role: 'owner',
     avatar: null,
@@ -30,7 +30,7 @@ const teamMembers = [
   {
     id: '2',
     name: 'Mike Wilson',
-    email: 'mike@k9trainpro.com',
+    email: 'mike@k9protrain.com',
     phone: '(555) 234-5678',
     role: 'trainer',
     avatar: null,
@@ -40,7 +40,7 @@ const teamMembers = [
   {
     id: '3',
     name: 'Emily Davis',
-    email: 'emily@k9trainpro.com',
+    email: 'emily@k9protrain.com',
     phone: '(555) 345-6789',
     role: 'trainer',
     avatar: null,

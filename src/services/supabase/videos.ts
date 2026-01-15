@@ -1,4 +1,4 @@
-// Video Library Service Layer for K9 TrainPro
+// Video Library Service Layer for K9 ProTrain
 
 import { supabase } from '@/lib/supabase';
 import { isDemoMode, DEMO_FACILITY_ID } from '@/lib/demo-config';

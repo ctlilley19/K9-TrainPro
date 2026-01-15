@@ -157,7 +157,7 @@ export default function LandingPage() {
               <div className="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center shadow-glow-amber">
                 <Dog size={24} className="text-white" />
               </div>
-              <span className="text-xl font-bold text-gradient">K9 TrainPro</span>
+              <span className="text-xl font-bold text-gradient">K9 ProTrain</span>
             </div>
             <div className="hidden md:flex items-center gap-6 text-sm">
               <a href="#problem" className="text-surface-400 hover:text-white transition-colors">The Problem</a>
@@ -196,7 +196,7 @@ export default function LandingPage() {
           </p>
 
           <p className="text-lg text-surface-300 max-w-2xl mx-auto mb-10">
-            K9 TrainPro automates the busy work so you can focus on your mission.
+            K9 ProTrain automates the busy work so you can focus on your mission.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -537,7 +537,7 @@ export default function LandingPage() {
                 <BarChart3 size={24} />
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">Scale Without Chaos</h3>
-              <p className="text-surface-400 text-sm">As you grow across locations, K9 TrainPro keeps operations consistent. Standard procedures, not tribal knowledge.</p>
+              <p className="text-surface-400 text-sm">As you grow across locations, K9 ProTrain keeps operations consistent. Standard procedures, not tribal knowledge.</p>
             </div>
             <div className="p-6 rounded-2xl bg-surface-800/50 border border-surface-700">
               <div className="w-12 h-12 rounded-xl bg-pink-500/10 flex items-center justify-center text-pink-400 mb-4">
@@ -551,7 +551,7 @@ export default function LandingPage() {
                 <Shield size={24} />
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">Build Trust Automatically</h3>
-              <p className="text-surface-400 text-sm">Silence breeds anxiety. K9 TrainPro handles emotional management so your team can focus on the dogs.</p>
+              <p className="text-surface-400 text-sm">Silence breeds anxiety. K9 ProTrain handles emotional management so your team can focus on the dogs.</p>
             </div>
           </div>
         </div>
@@ -592,7 +592,7 @@ export default function LandingPage() {
               <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
                 <Dog size={18} className="text-white" />
               </div>
-              <span className="font-bold text-gradient">K9 TrainPro</span>
+              <span className="font-bold text-gradient">K9 ProTrain</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-surface-500">
               <span>Built by trainers, for trainers</span>

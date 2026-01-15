@@ -23,7 +23,7 @@ export default function DashboardLayout({
 
   // Show loading while checking auth
   if (!isInitialized || isLoading) {
-    return <PageLoading message="Loading K9 TrainPro..." />;
+    return <PageLoading message="Loading K9 ProTrain..." />;
   }
 
   // Don't render if not authenticated

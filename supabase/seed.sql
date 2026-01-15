@@ -1,4 +1,4 @@
--- K9 TrainPro Seed Data
+-- K9 ProTrain Seed Data
 -- Demo data for development and testing
 -- Note: Run this AFTER migrations and AFTER creating auth users
 

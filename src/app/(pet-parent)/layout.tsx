@@ -66,7 +66,7 @@ export default function PetParentLayout({
                 <Dog size={24} className="text-white" />
               </div>
               <div className="hidden sm:block">
-                <span className="text-lg font-bold text-white">K9 TrainPro</span>
+                <span className="text-lg font-bold text-white">K9 ProTrain</span>
                 <span className="text-xs text-surface-500 block -mt-1">Pet Parent Portal</span>
               </div>
             </Link>
@@ -249,7 +249,7 @@ export default function PetParentLayout({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-sm text-surface-500">
-              © 2025 K9 TrainPro. All rights reserved.
+              © 2025 K9 ProTrain. All rights reserved.
             </p>
             <div className="flex items-center gap-6">
               <Link href="/parent/help" className="text-sm text-surface-500 hover:text-white">

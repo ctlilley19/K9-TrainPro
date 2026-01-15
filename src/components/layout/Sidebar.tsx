@@ -103,7 +103,7 @@ export function Sidebar() {
           </div>
           {!isCollapsed && (
             <span className="font-bold text-lg bg-gradient-to-r from-brand-400 to-brand-500 bg-clip-text text-transparent">
-              K9 TrainPro
+              K9 ProTrain
             </span>
           )}
         </Link>

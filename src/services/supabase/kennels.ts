@@ -1,4 +1,4 @@
-// Kennel Management Service Layer for K9 TrainPro
+// Kennel Management Service Layer for K9 ProTrain
 // Handles kennel CRUD, assignments, activity logging, and QR code functionality
 
 import { supabase } from '@/lib/supabase';

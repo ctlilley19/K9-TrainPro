@@ -1,4 +1,4 @@
-// Database Types for K9 TrainPro
+// Database Types for K9 ProTrain
 // These types mirror the Supabase schema
 
 export type Json =

@@ -1,4 +1,4 @@
-// Daily Reports Service Layer for K9 TrainPro
+// Daily Reports Service Layer for K9 ProTrain
 // Handles daily report generation, management, and delivery
 
 import { supabase } from '@/lib/supabase';

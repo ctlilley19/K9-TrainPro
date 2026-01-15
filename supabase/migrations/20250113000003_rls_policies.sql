@@ -1,4 +1,4 @@
--- K9 TrainPro Row Level Security Policies
+-- K9 ProTrain Row Level Security Policies
 -- Implements multi-tenant security at the database level
 
 -- ============================================================================

@@ -61,7 +61,7 @@ export default function RegisterPage() {
         <div className="w-12 h-12 rounded-xl bg-brand-500 flex items-center justify-center shadow-glow-amber">
           <Dog size={28} className="text-white" />
         </div>
-        <span className="text-2xl font-bold text-gradient">K9 TrainPro</span>
+        <span className="text-2xl font-bold text-gradient">K9 ProTrain</span>
       </div>
 
       <Card variant="bordered" padding="lg">

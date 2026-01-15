@@ -160,7 +160,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           // Check if we're in demo mode
           if (isDemoMode()) {
-            console.log('K9 TrainPro running in demo mode');
+            console.log('K9 ProTrain running in demo mode');
             set({
               user: demoUser,
               facility: demoFacility,
@@ -386,7 +386,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'k9-trainpro-auth',
+      name: 'k9-protrain-auth',
       partialize: (state) => ({
         user: state.user,
         facility: state.facility,
