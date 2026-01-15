@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { stripe, SUBSCRIPTION_TIERS } from '@/lib/stripe';
 import { createClient } from '@supabase/supabase-js';
+import { sendVendorOrderEmail, sendOrderConfirmationEmail } from '@/services/email/vendor-order';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -142,17 +143,63 @@ export async function POST(request: NextRequest) {
 
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   const facilityId = session.metadata?.facility_id;
-  const tier = session.metadata?.tier;
+  const checkoutType = session.metadata?.type;
 
   if (!facilityId) {
     console.error('No facility ID in checkout session');
     return;
   }
 
-  // Get subscription details
+  // Handle tag order checkout
+  if (checkoutType === 'tag_order') {
+    const orderId = session.metadata?.order_id;
+    if (orderId) {
+      await handleTagOrderPayment(orderId, session);
+    }
+    return;
+  }
+
+  // Handle subscription checkout
   if (session.subscription) {
     const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
     await handleSubscriptionChange(subscription, 'customer.subscription.created');
+  }
+}
+
+async function handleTagOrderPayment(orderId: string, session: Stripe.Checkout.Session) {
+  // Update order status
+  await supabaseAdmin
+    .from('tag_orders')
+    .update({
+      status: 'paid',
+      stripe_payment_intent_id: session.payment_intent as string,
+    })
+    .eq('id', orderId);
+
+  // Update tag statuses to production
+  await supabaseAdmin
+    .from('tags')
+    .update({ status: 'production' })
+    .eq('order_id', orderId);
+
+  // Get order details for emails
+  const { data: order } = await supabaseAdmin
+    .from('tag_orders')
+    .select(`
+      *,
+      user:users(name, email)
+    `)
+    .eq('id', orderId)
+    .single();
+
+  if (order) {
+    // Send vendor email
+    await sendVendorOrderEmail(orderId);
+
+    // Send customer confirmation
+    if (order.user?.email) {
+      await sendOrderConfirmationEmail(orderId, order.user.email, order.user.name);
+    }
   }
 }
 
