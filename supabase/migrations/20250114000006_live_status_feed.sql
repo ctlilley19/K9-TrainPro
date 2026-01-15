@@ -140,7 +140,7 @@ CREATE POLICY "Trainers can view facility feed items"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM facility_members WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -148,9 +148,11 @@ CREATE POLICY "Trainers can create feed items"
   ON status_feed_items FOR INSERT
   TO authenticated
   WITH CHECK (
-    facility_id IN (
-      SELECT facility_id FROM facility_members
-      WHERE user_id = auth.uid() AND role IN ('owner', 'admin', 'trainer')
+    facility_id = get_user_facility_id(auth.uid())
+    AND EXISTS (
+      SELECT 1 FROM users
+      WHERE auth_id = auth.uid()
+      AND role IN ('owner', 'admin', 'trainer')
     )
   );
 
@@ -159,10 +161,12 @@ CREATE POLICY "Trainers can update their feed items"
   TO authenticated
   USING (
     created_by = auth.uid() OR
-    facility_id IN (
-      SELECT facility_id FROM facility_members
-      WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
-    )
+    (facility_id = get_user_facility_id(auth.uid())
+     AND EXISTS (
+       SELECT 1 FROM users
+       WHERE auth_id = auth.uid()
+       AND role IN ('owner', 'admin')
+     ))
   );
 
 CREATE POLICY "Trainers can delete their feed items"
@@ -170,10 +174,12 @@ CREATE POLICY "Trainers can delete their feed items"
   TO authenticated
   USING (
     created_by = auth.uid() OR
-    facility_id IN (
-      SELECT facility_id FROM facility_members
-      WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
-    )
+    (facility_id = get_user_facility_id(auth.uid())
+     AND EXISTS (
+       SELECT 1 FROM users
+       WHERE auth_id = auth.uid()
+       AND role IN ('owner', 'admin')
+     ))
   );
 
 -- Pet parents can view visible feed items for their dogs
@@ -184,8 +190,9 @@ CREATE POLICY "Pet parents can view their dogs feed items"
     is_visible_to_parents = true AND
     dog_id IN (
       SELECT d.id FROM dogs d
-      JOIN family_members fm ON fm.family_id = d.family_id
-      WHERE fm.user_id = auth.uid()
+      JOIN families f ON d.family_id = f.id
+      JOIN users u ON f.primary_contact_id = u.id
+      WHERE u.auth_id = auth.uid()
     )
   );
 
@@ -237,10 +244,12 @@ CREATE POLICY "Admins can manage presets"
   TO authenticated
   USING (
     facility_id IS NULL OR
-    facility_id IN (
-      SELECT facility_id FROM facility_members
-      WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
-    )
+    (facility_id = get_user_facility_id(auth.uid())
+     AND EXISTS (
+       SELECT 1 FROM users
+       WHERE auth_id = auth.uid()
+       AND role IN ('owner', 'admin')
+     ))
   );
 
 -- Function to auto-create feed items when activities start/end

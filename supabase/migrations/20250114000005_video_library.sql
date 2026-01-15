@@ -5,6 +5,22 @@
 CREATE TYPE video_visibility AS ENUM ('private', 'trainers', 'clients', 'public');
 CREATE TYPE video_category AS ENUM ('obedience', 'behavior', 'agility', 'tricks', 'puppy', 'leash', 'recall', 'socialization', 'other');
 
+-- Video Folders table (must be created before training_videos references it)
+CREATE TABLE IF NOT EXISTS video_folders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  facility_id UUID NOT NULL REFERENCES facilities(id) ON DELETE CASCADE,
+  parent_id UUID REFERENCES video_folders(id) ON DELETE CASCADE,
+
+  name TEXT NOT NULL,
+  description TEXT,
+  color TEXT DEFAULT '#3B82F6',
+
+  -- Timestamps
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_by UUID REFERENCES auth.users(id)
+);
+
 -- Training Videos table
 CREATE TABLE IF NOT EXISTS training_videos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -34,22 +50,6 @@ CREATE TABLE IF NOT EXISTS training_videos (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   uploaded_by UUID REFERENCES auth.users(id) ON DELETE SET NULL
-);
-
--- Video Folders table
-CREATE TABLE IF NOT EXISTS video_folders (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  facility_id UUID NOT NULL REFERENCES facilities(id) ON DELETE CASCADE,
-  parent_id UUID REFERENCES video_folders(id) ON DELETE CASCADE,
-
-  name TEXT NOT NULL,
-  description TEXT,
-  color TEXT DEFAULT '#3B82F6',
-
-  -- Timestamps
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  created_by UUID REFERENCES auth.users(id)
 );
 
 -- Video Shares table (for sharing specific videos with families)
@@ -145,7 +145,7 @@ CREATE POLICY "Trainers can view videos in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -154,7 +154,7 @@ CREATE POLICY "Trainers can create videos in their facility"
   TO authenticated
   WITH CHECK (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -163,7 +163,7 @@ CREATE POLICY "Trainers can update videos in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -172,7 +172,7 @@ CREATE POLICY "Trainers can delete videos in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -184,7 +184,7 @@ CREATE POLICY "Pet parents can view shared videos"
     id IN (
       SELECT video_id FROM video_shares
       WHERE family_id IN (
-        SELECT family_id FROM family_members WHERE user_id = auth.uid()
+        SELECT f.id FROM families f JOIN users u ON f.primary_contact_id = u.id WHERE u.auth_id = auth.uid()
       )
     )
     OR visibility = 'clients'
@@ -199,7 +199,7 @@ CREATE POLICY "Trainers can manage folders in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -213,7 +213,7 @@ CREATE POLICY "Trainers can manage shares in their facility"
     video_id IN (
       SELECT id FROM training_videos
       WHERE facility_id IN (
-        SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+        get_user_facility_id(auth.uid())
       )
     )
   );
@@ -223,7 +223,7 @@ CREATE POLICY "Pet parents can view their shares"
   TO authenticated
   USING (
     family_id IN (
-      SELECT family_id FROM family_members WHERE user_id = auth.uid()
+      SELECT f.id FROM families f JOIN users u ON f.primary_contact_id = u.id WHERE u.auth_id = auth.uid()
     )
   );
 
@@ -235,7 +235,7 @@ CREATE POLICY "Trainers can manage playlists in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -249,7 +249,7 @@ CREATE POLICY "Trainers can manage playlist videos"
     playlist_id IN (
       SELECT id FROM video_playlists
       WHERE facility_id IN (
-        SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+        get_user_facility_id(auth.uid())
       )
     )
   );

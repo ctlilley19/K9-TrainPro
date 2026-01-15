@@ -253,7 +253,7 @@ CREATE POLICY "Trainers can view stays in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -262,7 +262,7 @@ CREATE POLICY "Trainers can create stays in their facility"
   TO authenticated
   WITH CHECK (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -271,7 +271,7 @@ CREATE POLICY "Trainers can update stays in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -280,7 +280,7 @@ CREATE POLICY "Trainers can delete stays in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -292,8 +292,8 @@ CREATE POLICY "Pet parents can view their dog's stays"
     dog_id IN (
       SELECT d.id FROM dogs d
       JOIN families f ON d.family_id = f.id
-      JOIN family_members fm ON f.id = fm.family_id
-      WHERE fm.user_id = auth.uid()
+      JOIN users u ON f.primary_contact_id = u.id
+      WHERE u.auth_id = auth.uid()
     )
   );
 
@@ -305,7 +305,7 @@ CREATE POLICY "Trainers can view appointments in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -314,7 +314,7 @@ CREATE POLICY "Trainers can create appointments in their facility"
   TO authenticated
   WITH CHECK (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -323,7 +323,7 @@ CREATE POLICY "Trainers can update appointments in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -332,7 +332,7 @@ CREATE POLICY "Trainers can delete appointments in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -342,14 +342,14 @@ CREATE POLICY "Pet parents can view their appointments"
   TO authenticated
   USING (
     family_id IN (
-      SELECT family_id FROM family_members WHERE user_id = auth.uid()
+      SELECT f.id FROM families f JOIN users u ON f.primary_contact_id = u.id WHERE u.auth_id = auth.uid()
     )
     OR
     dog_id IN (
       SELECT d.id FROM dogs d
       JOIN families f ON d.family_id = f.id
-      JOIN family_members fm ON f.id = fm.family_id
-      WHERE fm.user_id = auth.uid()
+      JOIN users u ON f.primary_contact_id = u.id
+      WHERE u.auth_id = auth.uid()
     )
   );
 
@@ -361,7 +361,7 @@ CREATE POLICY "Trainers can view blocks in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -370,7 +370,7 @@ CREATE POLICY "Trainers can manage blocks in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -382,7 +382,7 @@ CREATE POLICY "Trainers can view templates in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -391,7 +391,7 @@ CREATE POLICY "Trainers can manage templates in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -405,7 +405,7 @@ CREATE POLICY "Trainers can view logs for stays in their facility"
     stay_id IN (
       SELECT id FROM board_train_stays
       WHERE facility_id IN (
-        SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+        get_user_facility_id(auth.uid())
       )
     )
   );
@@ -417,7 +417,7 @@ CREATE POLICY "Trainers can manage logs for stays in their facility"
     stay_id IN (
       SELECT id FROM board_train_stays
       WHERE facility_id IN (
-        SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+        get_user_facility_id(auth.uid())
       )
     )
   );
@@ -431,7 +431,7 @@ CREATE POLICY "Pet parents can view their dog's stay logs"
       SELECT bts.id FROM board_train_stays bts
       JOIN dogs d ON bts.dog_id = d.id
       JOIN families f ON d.family_id = f.id
-      JOIN family_members fm ON f.id = fm.family_id
-      WHERE fm.user_id = auth.uid()
+      JOIN users u ON f.primary_contact_id = u.id
+      WHERE u.auth_id = auth.uid()
     )
   );

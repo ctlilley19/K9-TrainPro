@@ -4,9 +4,12 @@
 -- Create enum types
 CREATE TYPE report_status AS ENUM ('draft', 'ready', 'sent', 'opened');
 
+-- Drop the simpler version from initial schema and replace with comprehensive version
+DROP TABLE IF EXISTS daily_reports CASCADE;
+
 -- Daily Reports table
 -- Comprehensive daily training reports for each dog
-CREATE TABLE IF NOT EXISTS daily_reports (
+CREATE TABLE daily_reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   facility_id UUID NOT NULL REFERENCES facilities(id) ON DELETE CASCADE,
   dog_id UUID NOT NULL REFERENCES dogs(id) ON DELETE CASCADE,
@@ -231,7 +234,7 @@ CREATE POLICY "Trainers can view reports in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -240,7 +243,7 @@ CREATE POLICY "Trainers can create reports in their facility"
   TO authenticated
   WITH CHECK (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -249,7 +252,7 @@ CREATE POLICY "Trainers can update reports in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -258,7 +261,7 @@ CREATE POLICY "Trainers can delete reports in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -271,8 +274,8 @@ CREATE POLICY "Pet parents can view their dog's reports"
     dog_id IN (
       SELECT d.id FROM dogs d
       JOIN families f ON d.family_id = f.id
-      JOIN family_members fm ON f.id = fm.family_id
-      WHERE fm.user_id = auth.uid()
+      JOIN users u ON f.primary_contact_id = u.id
+      WHERE u.auth_id = auth.uid()
     )
   );
 
@@ -284,7 +287,7 @@ CREATE POLICY "Trainers can manage templates in their facility"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM user_profiles WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -296,7 +299,7 @@ CREATE POLICY "Users can view their family's preferences"
   TO authenticated
   USING (
     family_id IN (
-      SELECT family_id FROM family_members WHERE user_id = auth.uid()
+      SELECT f.id FROM families f JOIN users u ON f.primary_contact_id = u.id WHERE u.auth_id = auth.uid()
     )
   );
 
@@ -305,7 +308,7 @@ CREATE POLICY "Users can update their family's preferences"
   TO authenticated
   USING (
     family_id IN (
-      SELECT family_id FROM family_members WHERE user_id = auth.uid()
+      SELECT f.id FROM families f JOIN users u ON f.primary_contact_id = u.id WHERE u.auth_id = auth.uid()
     )
   );
 
@@ -318,14 +321,14 @@ CREATE POLICY "Users can view comments on reports they can access"
   USING (
     report_id IN (
       SELECT id FROM daily_reports WHERE
-        facility_id IN (SELECT facility_id FROM user_profiles WHERE user_id = auth.uid())
+        facility_id IN (get_user_facility_id(auth.uid()))
         OR (
           status = 'sent' AND
           dog_id IN (
             SELECT d.id FROM dogs d
             JOIN families f ON d.family_id = f.id
-            JOIN family_members fm ON f.id = fm.family_id
-            WHERE fm.user_id = auth.uid()
+            JOIN users u ON f.primary_contact_id = u.id
+            WHERE u.auth_id = auth.uid()
           )
         )
     )

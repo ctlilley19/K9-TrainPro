@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { User, Facility } from '@/types/database';
+import { recordFullLogin } from './pin-auth';
 
 interface AuthResult {
   user: User | null;
@@ -51,6 +52,9 @@ export const authService = {
       .from('users')
       .update({ last_login_at: new Date().toISOString() })
       .eq('id', user.id);
+
+    // Record full login for PIN auth session tracking
+    await recordFullLogin(user.id);
 
     return { user, facility };
   },

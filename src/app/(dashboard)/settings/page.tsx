@@ -25,12 +25,14 @@ import {
   Smartphone,
   Clock,
 } from 'lucide-react';
+import { SecuritySettings, SubscriptionSettings } from '@/components/settings';
 
-type SettingsTab = 'facility' | 'profile' | 'notifications' | 'team' | 'billing';
+type SettingsTab = 'facility' | 'profile' | 'security' | 'notifications' | 'team' | 'billing';
 
 const tabs = [
   { id: 'facility' as const, label: 'Facility', icon: Building },
   { id: 'profile' as const, label: 'Profile', icon: User },
+  { id: 'security' as const, label: 'Security', icon: Shield },
   { id: 'notifications' as const, label: 'Notifications', icon: Bell },
   { id: 'team' as const, label: 'Team', icon: Users },
   { id: 'billing' as const, label: 'Billing', icon: CreditCard },
@@ -336,6 +338,9 @@ export default function SettingsPage() {
             </>
           )}
 
+          {/* Security Settings */}
+          {activeTab === 'security' && <SecuritySettings />}
+
           {/* Notifications Settings */}
           {activeTab === 'notifications' && (
             <>
@@ -457,70 +462,7 @@ export default function SettingsPage() {
           )}
 
           {/* Billing Settings */}
-          {activeTab === 'billing' && (
-            <>
-              <Card>
-                <CardHeader title="Current Plan" />
-                <CardContent>
-                  <div className="p-6 rounded-xl bg-gradient-to-r from-brand-500/20 to-purple-500/20 border border-brand-500/30">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-brand-400">Current Plan</p>
-                        <p className="text-2xl font-bold text-white">Professional</p>
-                        <p className="text-surface-400 mt-1">$99/month • Unlimited dogs</p>
-                      </div>
-                      <Button variant="outline">Upgrade Plan</Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader title="Payment Method" />
-                <CardContent>
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-surface-800/50">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-8 rounded bg-surface-700 flex items-center justify-center">
-                        <CreditCard size={20} className="text-surface-400" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-white">•••• •••• •••• 4242</p>
-                        <p className="text-sm text-surface-500">Expires 12/2026</p>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      Update
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader title="Billing History" />
-                <CardContent>
-                  <div className="space-y-2">
-                    {[
-                      { date: 'Jan 1, 2025', amount: '$99.00', status: 'Paid' },
-                      { date: 'Dec 1, 2024', amount: '$99.00', status: 'Paid' },
-                      { date: 'Nov 1, 2024', amount: '$99.00', status: 'Paid' },
-                    ].map((invoice, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between p-3 rounded-lg bg-surface-800/50"
-                      >
-                        <span className="text-surface-400">{invoice.date}</span>
-                        <span className="text-white">{invoice.amount}</span>
-                        <span className="text-green-400 text-sm">{invoice.status}</span>
-                        <Button variant="ghost" size="sm">
-                          Download
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          )}
+          {activeTab === 'billing' && <SubscriptionSettings />}
         </div>
       </div>
     </div>

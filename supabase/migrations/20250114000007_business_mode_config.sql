@@ -217,7 +217,7 @@ CREATE POLICY "Facility members can view config"
   TO authenticated
   USING (
     facility_id IN (
-      SELECT facility_id FROM facility_members WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -225,9 +225,11 @@ CREATE POLICY "Admins can manage facility config"
   ON facility_config FOR ALL
   TO authenticated
   USING (
-    facility_id IN (
-      SELECT facility_id FROM facility_members
-      WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
+    facility_id = get_user_facility_id(auth.uid())
+    AND EXISTS (
+      SELECT 1 FROM users
+      WHERE auth_id = auth.uid()
+      AND role IN ('owner', 'admin')
     )
   );
 

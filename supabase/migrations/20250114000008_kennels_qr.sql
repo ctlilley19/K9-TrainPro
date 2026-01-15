@@ -9,7 +9,7 @@ CREATE TYPE kennel_size AS ENUM ('small', 'medium', 'large', 'extra_large');
 
 -- Kennels table
 CREATE TABLE kennels (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     facility_id UUID NOT NULL REFERENCES facilities(id) ON DELETE CASCADE,
     name VARCHAR(50) NOT NULL,
     location VARCHAR(100),
@@ -27,7 +27,7 @@ CREATE TABLE kennels (
 
 -- Kennel assignments table - tracks which dog is in which kennel
 CREATE TABLE kennel_assignments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     kennel_id UUID NOT NULL REFERENCES kennels(id) ON DELETE CASCADE,
     dog_id UUID NOT NULL REFERENCES dogs(id) ON DELETE CASCADE,
     stay_id UUID REFERENCES board_train_stays(id) ON DELETE SET NULL,
@@ -41,7 +41,7 @@ CREATE TABLE kennel_assignments (
 
 -- Kennel activity log - track activities via QR scan
 CREATE TABLE kennel_activity_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     kennel_id UUID NOT NULL REFERENCES kennels(id) ON DELETE CASCADE,
     assignment_id UUID REFERENCES kennel_assignments(id) ON DELETE SET NULL,
     dog_id UUID REFERENCES dogs(id) ON DELETE SET NULL,

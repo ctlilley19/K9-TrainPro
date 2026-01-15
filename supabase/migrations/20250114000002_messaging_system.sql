@@ -8,7 +8,7 @@ CREATE TYPE message_type AS ENUM ('text', 'image', 'video', 'file', 'system');
 
 -- Conversations table
 CREATE TABLE conversations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   facility_id UUID NOT NULL REFERENCES facilities(id) ON DELETE CASCADE,
   family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
   dog_id UUID REFERENCES dogs(id) ON DELETE SET NULL,
@@ -35,7 +35,7 @@ CREATE TABLE conversations (
 
 -- Messages table
 CREATE TABLE messages (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
 
   -- Sender info
@@ -72,7 +72,7 @@ CREATE TABLE messages (
 
 -- Message reactions (optional enhancement)
 CREATE TABLE message_reactions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   message_id UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   reaction VARCHAR(10) NOT NULL, -- emoji like '👍', '❤️', '🎉'
@@ -83,7 +83,7 @@ CREATE TABLE message_reactions (
 
 -- Quick reply templates for trainers
 CREATE TABLE message_templates (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   facility_id UUID NOT NULL REFERENCES facilities(id) ON DELETE CASCADE,
 
   title VARCHAR(100) NOT NULL,
@@ -209,7 +209,7 @@ CREATE POLICY "Trainers can view facility conversations"
   ON conversations FOR SELECT
   USING (
     facility_id IN (
-      SELECT facility_id FROM facility_members WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -225,7 +225,7 @@ CREATE POLICY "Trainers can create conversations"
   ON conversations FOR INSERT
   WITH CHECK (
     facility_id IN (
-      SELECT facility_id FROM facility_members WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -233,7 +233,7 @@ CREATE POLICY "Trainers can update conversations"
   ON conversations FOR UPDATE
   USING (
     facility_id IN (
-      SELECT facility_id FROM facility_members WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
@@ -243,7 +243,7 @@ CREATE POLICY "Users can view messages in their conversations"
   USING (
     conversation_id IN (
       SELECT id FROM conversations WHERE
-        facility_id IN (SELECT facility_id FROM facility_members WHERE user_id = auth.uid())
+        facility_id IN (get_user_facility_id(auth.uid()))
         OR family_id IN (SELECT id FROM families WHERE primary_contact_id = auth.uid())
     )
   );
@@ -253,7 +253,7 @@ CREATE POLICY "Users can send messages to their conversations"
   WITH CHECK (
     conversation_id IN (
       SELECT id FROM conversations WHERE
-        facility_id IN (SELECT facility_id FROM facility_members WHERE user_id = auth.uid())
+        facility_id IN (get_user_facility_id(auth.uid()))
         OR family_id IN (SELECT id FROM families WHERE primary_contact_id = auth.uid())
     )
   );
@@ -269,7 +269,7 @@ CREATE POLICY "Users can view reactions in their conversations"
     message_id IN (
       SELECT m.id FROM messages m
       JOIN conversations c ON c.id = m.conversation_id
-      WHERE c.facility_id IN (SELECT facility_id FROM facility_members WHERE user_id = auth.uid())
+      WHERE c.facility_id IN (get_user_facility_id(auth.uid()))
         OR c.family_id IN (SELECT id FROM families WHERE primary_contact_id = auth.uid())
     )
   );
@@ -287,16 +287,18 @@ CREATE POLICY "Trainers can view facility templates"
   ON message_templates FOR SELECT
   USING (
     facility_id IN (
-      SELECT facility_id FROM facility_members WHERE user_id = auth.uid()
+      get_user_facility_id(auth.uid())
     )
   );
 
 CREATE POLICY "Trainers can manage templates"
   ON message_templates FOR ALL
   USING (
-    facility_id IN (
-      SELECT facility_id FROM facility_members
-      WHERE user_id = auth.uid() AND role IN ('owner', 'admin', 'trainer')
+    facility_id = get_user_facility_id(auth.uid())
+    AND EXISTS (
+      SELECT 1 FROM users
+      WHERE auth_id = auth.uid()
+      AND role IN ('owner', 'admin', 'trainer')
     )
   );
 
