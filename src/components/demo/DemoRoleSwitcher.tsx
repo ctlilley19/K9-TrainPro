@@ -1,275 +1,113 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
 import {
-  useAuthStore,
   useDemoPersona,
   useIsDemoMode,
   useDemoFamilyTier,
   useDemoBusinessTier,
   type DemoPersona,
-  type FamilyTier,
-  type BusinessTier,
 } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
+import { DemoTierModal } from './DemoTierModal';
 import {
-  Settings2,
   Home,
   ClipboardList,
   Briefcase,
-  ChevronUp,
-  X,
   Sparkles,
   Crown,
 } from 'lucide-react';
 
-const personaConfig: Record<DemoPersona, { label: string; icon: typeof Home; color: string; path: string }> = {
+const personaConfig: Record<DemoPersona, { label: string; icon: typeof Home; color: string }> = {
   dog_owner: {
     label: 'Family',
     icon: Home,
     color: 'blue',
-    path: '/parent',
   },
   trainer: {
     label: 'Trainer',
     icon: ClipboardList,
     color: 'green',
-    path: '/dashboard',
   },
   manager: {
     label: 'Manager',
     icon: Briefcase,
     color: 'purple',
-    path: '/dashboard',
   },
 };
 
-const familyTierConfig: Record<FamilyTier, { label: string; price: string; color: string }> = {
-  free: { label: 'Free', price: '$0', color: 'surface' },
-  premium: { label: 'Premium', price: '$10/mo', color: 'brand' },
-  pro: { label: 'Pro', price: '$19/mo', color: 'amber' },
+const familyTierLabels = {
+  free: { label: 'Free', color: 'surface' },
+  premium: { label: 'Premium', color: 'brand' },
+  pro: { label: 'Pro', color: 'amber' },
 };
 
-const businessTierConfig: Record<BusinessTier, { label: string; price: string; color: string }> = {
-  starter: { label: 'Starter', price: '$79/mo', color: 'surface' },
-  professional: { label: 'Pro', price: '$149/mo', color: 'brand' },
-  enterprise: { label: 'Business', price: '$249/mo', color: 'purple' },
+const businessTierLabels = {
+  starter: { label: 'Starter', color: 'surface' },
+  professional: { label: 'Pro', color: 'brand' },
+  enterprise: { label: 'Business', color: 'purple' },
 };
 
 export function DemoRoleSwitcher() {
-  const router = useRouter();
-  const pathname = usePathname();
   const isDemoMode = useIsDemoMode();
   const currentPersona = useDemoPersona();
   const familyTier = useDemoFamilyTier();
   const businessTier = useDemoBusinessTier();
-  const { setDemoPersona, setDemoFamilyTier, setDemoBusinessTier } = useAuthStore();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Only show in demo mode
   if (!isDemoMode) return null;
 
   const current = currentPersona ? personaConfig[currentPersona] : null;
   const isFamily = currentPersona === 'dog_owner';
-  const currentTier = isFamily ? familyTierConfig[familyTier] : businessTierConfig[businessTier];
-
-  const handlePersonaChange = (persona: DemoPersona) => {
-    setDemoPersona(persona);
-
-    // Redirect to appropriate view
-    const config = personaConfig[persona];
-    const currentBase = '/' + pathname.split('/')[1];
-    if (config.path !== currentBase) {
-      router.push(config.path);
-    }
-  };
-
-  const handleFamilyTierChange = (tier: FamilyTier) => {
-    setDemoFamilyTier(tier);
-  };
-
-  const handleBusinessTierChange = (tier: BusinessTier) => {
-    setDemoBusinessTier(tier);
-  };
+  const currentTier = isFamily ? familyTierLabels[familyTier] : businessTierLabels[businessTier];
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
-      {/* Expanded Panel */}
-      {isExpanded && (
-        <div className="absolute bottom-full right-0 mb-2 w-72 bg-surface-800 border border-surface-700 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
-          {/* Header */}
-          <div className="px-4 py-3 border-b border-surface-700 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles size={16} className="text-brand-400" />
-              <span className="text-sm font-medium text-white">Demo Mode</span>
-            </div>
-            <button
-              onClick={() => setIsExpanded(false)}
-              className="text-surface-400 hover:text-white transition-colors"
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          {/* Persona Options */}
-          <div className="p-2 border-b border-surface-700">
-            <p className="text-xs text-surface-500 uppercase tracking-wider px-2 mb-2">Role</p>
-            {(Object.entries(personaConfig) as [DemoPersona, typeof personaConfig[DemoPersona]][]).map(([key, config]) => {
-              const isActive = currentPersona === key;
-              const Icon = config.icon;
-              return (
-                <button
-                  key={key}
-                  onClick={() => handlePersonaChange(key)}
-                  className={cn(
-                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors',
-                    isActive
-                      ? 'bg-brand-500/10 text-brand-400'
-                      : 'text-surface-300 hover:bg-surface-700'
-                  )}
-                >
-                  <div className={cn(
-                    'w-8 h-8 rounded-lg flex items-center justify-center',
-                    config.color === 'blue' && 'bg-blue-500/20 text-blue-400',
-                    config.color === 'green' && 'bg-green-500/20 text-green-400',
-                    config.color === 'purple' && 'bg-purple-500/20 text-purple-400',
-                  )}>
-                    <Icon size={16} />
-                  </div>
-                  <span className="text-sm font-medium">{config.label}</span>
-                  {isActive && (
-                    <span className="ml-auto text-xs text-brand-400">Active</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Tier Selection */}
-          <div className="p-2">
-            <p className="text-xs text-surface-500 uppercase tracking-wider px-2 mb-2">
-              {isFamily ? 'Family Tier' : 'Business Tier'}
-            </p>
-
-            {isFamily ? (
-              // Family Tier Options
-              <div className="grid grid-cols-3 gap-1">
-                {(Object.entries(familyTierConfig) as [FamilyTier, typeof familyTierConfig[FamilyTier]][]).map(([key, config]) => {
-                  const isActive = familyTier === key;
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => handleFamilyTierChange(key)}
-                      className={cn(
-                        'flex flex-col items-center gap-1 px-2 py-2 rounded-lg transition-colors text-center',
-                        isActive
-                          ? config.color === 'amber'
-                            ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/50'
-                            : config.color === 'brand'
-                            ? 'bg-brand-500/20 text-brand-400 ring-1 ring-brand-500/50'
-                            : 'bg-surface-600 text-white ring-1 ring-surface-500'
-                          : 'text-surface-400 hover:bg-surface-700 hover:text-surface-200'
-                      )}
-                    >
-                      {key === 'pro' && <Crown size={14} className="text-amber-400" />}
-                      <span className="text-xs font-medium">{config.label}</span>
-                      <span className="text-[10px] opacity-70">{config.price}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              // Business Tier Options
-              <div className="grid grid-cols-3 gap-1">
-                {(Object.entries(businessTierConfig) as [BusinessTier, typeof businessTierConfig[BusinessTier]][]).map(([key, config]) => {
-                  const isActive = businessTier === key;
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => handleBusinessTierChange(key)}
-                      className={cn(
-                        'flex flex-col items-center gap-1 px-2 py-2 rounded-lg transition-colors text-center',
-                        isActive
-                          ? config.color === 'purple'
-                            ? 'bg-purple-500/20 text-purple-400 ring-1 ring-purple-500/50'
-                            : config.color === 'brand'
-                            ? 'bg-brand-500/20 text-brand-400 ring-1 ring-brand-500/50'
-                            : 'bg-surface-600 text-white ring-1 ring-surface-500'
-                          : 'text-surface-400 hover:bg-surface-700 hover:text-surface-200'
-                      )}
-                    >
-                      <span className="text-xs font-medium">{config.label}</span>
-                      <span className="text-[10px] opacity-70">{config.price}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          <div className="px-4 py-3 border-t border-surface-700">
-            <button
-              onClick={() => {
-                setIsExpanded(false);
-                router.push('/demo/config');
-              }}
-              className="text-xs text-surface-400 hover:text-white flex items-center gap-1 transition-colors"
-            >
-              <Settings2 size={12} />
-              Demo Configuration
-            </button>
-          </div>
-        </div>
-      )}
-
+    <>
       {/* Toggle Button */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className={cn(
-          'flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg transition-all',
-          'bg-surface-800 border border-surface-700 hover:border-surface-600',
-          isExpanded && 'ring-2 ring-brand-500/50'
-        )}
-      >
-        {current ? (
-          <>
-            <div className={cn(
-              'w-6 h-6 rounded-full flex items-center justify-center',
-              current.color === 'blue' && 'bg-blue-500/20 text-blue-400',
-              current.color === 'green' && 'bg-green-500/20 text-green-400',
-              current.color === 'purple' && 'bg-purple-500/20 text-purple-400',
-            )}>
-              <current.icon size={14} />
-            </div>
-            <span className="text-sm font-medium text-white">{current.label}</span>
-            <span className={cn(
-              'text-xs px-1.5 py-0.5 rounded',
-              currentTier.color === 'amber' && 'bg-amber-500/20 text-amber-400',
-              currentTier.color === 'brand' && 'bg-brand-500/20 text-brand-400',
-              currentTier.color === 'purple' && 'bg-purple-500/20 text-purple-400',
-              currentTier.color === 'surface' && 'bg-surface-700 text-surface-300',
-            )}>
-              {currentTier.label}
-            </span>
-          </>
-        ) : (
-          <>
-            <div className="w-6 h-6 rounded-full flex items-center justify-center bg-brand-500/20 text-brand-400">
-              <Sparkles size={14} />
-            </div>
-            <span className="text-sm font-medium text-white">Demo</span>
-          </>
-        )}
-        <ChevronUp
-          size={14}
+      <div className="fixed bottom-6 right-6 z-50">
+        <button
+          onClick={() => setIsModalOpen(true)}
           className={cn(
-            'text-surface-400 transition-transform',
-            isExpanded && 'rotate-180'
+            'flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg transition-all',
+            'bg-surface-800 border border-surface-700 hover:border-surface-600 hover:scale-105'
           )}
-        />
-      </button>
-    </div>
+        >
+          {current ? (
+            <>
+              <div className={cn(
+                'w-6 h-6 rounded-full flex items-center justify-center',
+                current.color === 'blue' && 'bg-blue-500/20 text-blue-400',
+                current.color === 'green' && 'bg-green-500/20 text-green-400',
+                current.color === 'purple' && 'bg-purple-500/20 text-purple-400',
+              )}>
+                <current.icon size={14} />
+              </div>
+              <span className="text-sm font-medium text-white">{current.label}</span>
+              <span className={cn(
+                'text-xs px-1.5 py-0.5 rounded flex items-center gap-1',
+                currentTier.color === 'amber' && 'bg-amber-500/20 text-amber-400',
+                currentTier.color === 'brand' && 'bg-brand-500/20 text-brand-400',
+                currentTier.color === 'purple' && 'bg-purple-500/20 text-purple-400',
+                currentTier.color === 'surface' && 'bg-surface-700 text-surface-300',
+              )}>
+                {(currentTier.color === 'amber' || currentTier.color === 'purple') && <Crown size={10} />}
+                {currentTier.label}
+              </span>
+            </>
+          ) : (
+            <>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center bg-brand-500/20 text-brand-400">
+                <Sparkles size={14} />
+              </div>
+              <span className="text-sm font-medium text-white">Demo</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Modal */}
+      <DemoTierModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+    </>
   );
 }
