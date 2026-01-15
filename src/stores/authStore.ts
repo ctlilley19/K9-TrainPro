@@ -167,6 +167,8 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true,
               isLoading: false,
               isInitialized: true,
+              isDemoModeActive: true,
+              demoPersona: 'manager',
             });
             return;
           }
