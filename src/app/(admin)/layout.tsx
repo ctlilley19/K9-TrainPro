@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AdminAuthGuard, AdminSidebar, AdminHeader } from '@/components/admin';
 
-// Pages that don't require full admin layout (auth pages)
+// Pages that don't require full admin layout (auth pages with simple layout)
 const authPages = ['/admin/login', '/admin/mfa', '/admin/mfa-setup', '/admin/change-password'];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
