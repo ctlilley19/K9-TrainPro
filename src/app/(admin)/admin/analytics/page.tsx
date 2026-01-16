@@ -1,24 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { useAdminStore } from '@/stores/adminStore';
 import {
   Users,
   DollarSign,
-  TrendingUp,
-  TrendingDown,
   Activity,
   Dog,
   Calendar,
   ArrowUpRight,
   ArrowDownRight,
   RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import {
-  LineChart,
-  Line,
   AreaChart,
   Area,
   BarChart,
@@ -32,53 +30,34 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  LineChart,
+  Line,
 } from 'recharts';
 
-// Demo data
-const userGrowthData = [
-  { month: 'Jul', users: 850, active: 720 },
-  { month: 'Aug', users: 920, active: 780 },
-  { month: 'Sep', users: 1010, active: 850 },
-  { month: 'Oct', users: 1150, active: 970 },
-  { month: 'Nov', users: 1280, active: 1080 },
-  { month: 'Dec', users: 1350, active: 1150 },
-  { month: 'Jan', users: 1450, active: 1247 },
-];
-
-const revenueData = [
-  { month: 'Jul', mrr: 12500, arr: 150000 },
-  { month: 'Aug', mrr: 13200, arr: 158400 },
-  { month: 'Sep', mrr: 14500, arr: 174000 },
-  { month: 'Oct', mrr: 15800, arr: 189600 },
-  { month: 'Nov', mrr: 17100, arr: 205200 },
-  { month: 'Dec', mrr: 17900, arr: 214800 },
-  { month: 'Jan', mrr: 18450, arr: 221400 },
-];
-
-const subscriptionData = [
-  { name: 'Free', value: 680, color: '#6b7280' },
-  { name: 'Basic', value: 420, color: '#3b82f6' },
-  { name: 'Pro', value: 280, color: '#8b5cf6' },
-  { name: 'Business', value: 70, color: '#f59e0b' },
-];
-
-const sessionData = [
-  { day: 'Mon', sessions: 1850 },
-  { day: 'Tue', sessions: 2100 },
-  { day: 'Wed', sessions: 1950 },
-  { day: 'Thu', sessions: 2200 },
-  { day: 'Fri', sessions: 1750 },
-  { day: 'Sat', sessions: 2450 },
-  { day: 'Sun', sessions: 2150 },
-];
-
-const retentionData = [
-  { week: 'Week 1', rate: 100 },
-  { week: 'Week 2', rate: 82 },
-  { week: 'Week 4', rate: 68 },
-  { week: 'Week 8', rate: 54 },
-  { week: 'Week 12', rate: 45 },
-];
+// Types
+interface AnalyticsData {
+  metrics: {
+    activeUsers: number;
+    activeUsersChange: number;
+    mrr: number;
+    mrrChange: number;
+    activeDogs: number;
+    dogsChange: number;
+    avgSessions: number;
+    sessionsChange: number;
+  };
+  userGrowthData: { month: string; users: number; active: number }[];
+  revenueData: { month: string; mrr: number; arr: number }[];
+  subscriptionData: { name: string; value: number; color: string }[];
+  sessionData: { day: string; sessions: number }[];
+  retentionData: { week: string; rate: number }[];
+  additionalMetrics: {
+    conversionRate: number;
+    churnRate: number;
+    avgSubscriptionLength: number;
+    ltv: number;
+  };
+}
 
 // Time range options
 const timeRanges = [
@@ -112,7 +91,7 @@ function StatCard({
         <div>
           <p className="text-sm text-surface-400 mb-1">{title}</p>
           <p className="text-2xl font-bold text-white">{value}</p>
-          {change !== undefined && (
+          {change !== undefined && change !== 0 && (
             <div className="flex items-center gap-1 mt-2">
               {change >= 0 ? (
                 <ArrowUpRight size={14} className="text-green-400" />
@@ -134,16 +113,58 @@ function StatCard({
   );
 }
 
-export default function AnalyticsPage() {
-  const [timeRange, setTimeRange] = useState('30d');
-  const [isLoading, setIsLoading] = useState(false);
+// Empty state for charts
+function EmptyChart({ message }: { message: string }) {
+  return (
+    <div className="h-full flex items-center justify-center text-surface-500">
+      {message}
+    </div>
+  );
+}
 
-  const refreshData = async () => {
+export default function AnalyticsPage() {
+  const { sessionToken } = useAdminStore();
+  const [timeRange, setTimeRange] = useState('30d');
+  const [isLoading, setIsLoading] = useState(true);
+  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    if (!sessionToken) return;
+
     setIsLoading(true);
-    // Simulating API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setIsLoading(false);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/admin/analytics?range=${timeRange}`, {
+        headers: {
+          'x-admin-session': sessionToken,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch analytics');
+      }
+
+      const result = await response.json();
+      setData(result);
+    } catch (err) {
+      console.error('Error fetching analytics:', err);
+      setError('Failed to load analytics data');
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchData();
+  }, [sessionToken, timeRange]);
+
+  const hasData = data && (
+    data.metrics.activeUsers > 0 ||
+    data.metrics.mrr > 0 ||
+    data.metrics.activeDogs > 0
+  );
 
   return (
     <div className="space-y-6">
@@ -172,7 +193,7 @@ export default function AnalyticsPage() {
               variant="outline"
               size="sm"
               leftIcon={<RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />}
-              onClick={refreshData}
+              onClick={fetchData}
               disabled={isLoading}
             >
               Refresh
@@ -181,309 +202,257 @@ export default function AnalyticsPage() {
         }
       />
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          title="Monthly Active Users"
-          value="1,247"
-          change={12}
-          changeLabel="MTD"
-          icon={<Users size={20} />}
-          iconColor="text-blue-400"
-          iconBg="bg-blue-500/10"
-        />
-        <StatCard
-          title="Monthly Recurring Revenue"
-          value="$18,450"
-          change={8}
-          changeLabel="MTD"
-          icon={<DollarSign size={20} />}
-          iconColor="text-green-400"
-          iconBg="bg-green-500/10"
-        />
-        <StatCard
-          title="Active Dogs"
-          value="3,892"
-          change={15}
-          changeLabel="MTD"
-          icon={<Dog size={20} />}
-          iconColor="text-brand-400"
-          iconBg="bg-brand-500/10"
-        />
-        <StatCard
-          title="Avg Sessions/User"
-          value="8.2"
-          change={5}
-          changeLabel="vs last month"
-          icon={<Activity size={20} />}
-          iconColor="text-purple-400"
-          iconBg="bg-purple-500/10"
-        />
-      </div>
+      {isLoading && !data ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+        </div>
+      ) : error ? (
+        <Card className="p-8 text-center text-red-400">{error}</Card>
+      ) : (
+        <>
+          {/* Key Metrics */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard
+              title="Monthly Active Users"
+              value={data?.metrics.activeUsers.toLocaleString() || '0'}
+              change={data?.metrics.activeUsersChange}
+              changeLabel="MTD"
+              icon={<Users size={20} />}
+              iconColor="text-blue-400"
+              iconBg="bg-blue-500/10"
+            />
+            <StatCard
+              title="Monthly Recurring Revenue"
+              value={`$${(data?.metrics.mrr || 0).toLocaleString()}`}
+              change={data?.metrics.mrrChange}
+              changeLabel="MTD"
+              icon={<DollarSign size={20} />}
+              iconColor="text-green-400"
+              iconBg="bg-green-500/10"
+            />
+            <StatCard
+              title="Active Dogs"
+              value={(data?.metrics.activeDogs || 0).toLocaleString()}
+              change={data?.metrics.dogsChange}
+              changeLabel="MTD"
+              icon={<Dog size={20} />}
+              iconColor="text-brand-400"
+              iconBg="bg-brand-500/10"
+            />
+            <StatCard
+              title="Avg Sessions/User"
+              value={data?.metrics.avgSessions || '0'}
+              change={data?.metrics.sessionsChange}
+              changeLabel="vs last month"
+              icon={<Activity size={20} />}
+              iconColor="text-purple-400"
+              iconBg="bg-purple-500/10"
+            />
+          </div>
 
-      {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* User Growth Chart */}
-        <Card>
-          <div className="p-4 border-b border-surface-800">
-            <h3 className="font-medium text-white">User Growth</h3>
-            <p className="text-sm text-surface-500">Total vs Active Users</p>
-          </div>
-          <div className="p-4 h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={userGrowthData}>
-                <defs>
-                  <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
-                <YAxis stroke="#6b7280" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1f2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                  }}
-                  labelStyle={{ color: '#fff' }}
-                />
-                <Legend />
-                <Area
-                  type="monotone"
-                  dataKey="users"
-                  name="Total Users"
-                  stroke="#3b82f6"
-                  fillOpacity={1}
-                  fill="url(#colorUsers)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="active"
-                  name="Active Users"
-                  stroke="#22c55e"
-                  fillOpacity={1}
-                  fill="url(#colorActive)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
+          {/* Charts Row 1 */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* User Growth Chart */}
+            <Card>
+              <div className="p-4 border-b border-surface-800">
+                <h3 className="font-medium text-white">User Growth</h3>
+                <p className="text-sm text-surface-500">Total vs Active Users</p>
+              </div>
+              <div className="p-4 h-[300px]">
+                {hasData && data?.userGrowthData ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={data.userGrowthData}>
+                      <defs>
+                        <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                      <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
+                      <YAxis stroke="#6b7280" fontSize={12} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1f2937',
+                          border: '1px solid #374151',
+                          borderRadius: '8px',
+                        }}
+                        labelStyle={{ color: '#fff' }}
+                      />
+                      <Legend />
+                      <Area type="monotone" dataKey="users" name="Total Users" stroke="#3b82f6" fillOpacity={1} fill="url(#colorUsers)" />
+                      <Area type="monotone" dataKey="active" name="Active Users" stroke="#22c55e" fillOpacity={1} fill="url(#colorActive)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <EmptyChart message="No user data yet" />
+                )}
+              </div>
+            </Card>
 
-        {/* Revenue Chart */}
-        <Card>
-          <div className="p-4 border-b border-surface-800">
-            <h3 className="font-medium text-white">Revenue</h3>
-            <p className="text-sm text-surface-500">MRR and ARR Trends</p>
+            {/* Revenue Chart */}
+            <Card>
+              <div className="p-4 border-b border-surface-800">
+                <h3 className="font-medium text-white">Revenue</h3>
+                <p className="text-sm text-surface-500">MRR and ARR Trends</p>
+              </div>
+              <div className="p-4 h-[300px]">
+                {data?.metrics.mrr && data.metrics.mrr > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={data.revenueData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                      <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
+                      <YAxis stroke="#6b7280" fontSize={12} tickFormatter={(value) => `$${value / 1000}k`} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                        labelStyle={{ color: '#fff' }}
+                        formatter={(value: number) => [`$${value.toLocaleString()}`, '']}
+                      />
+                      <Legend />
+                      <Line type="monotone" dataKey="mrr" name="MRR" stroke="#22c55e" strokeWidth={2} dot={{ fill: '#22c55e' }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <EmptyChart message="No revenue data yet" />
+                )}
+              </div>
+            </Card>
           </div>
-          <div className="p-4 h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
-                <YAxis
-                  yAxisId="left"
-                  stroke="#6b7280"
-                  fontSize={12}
-                  tickFormatter={(value) => `$${value / 1000}k`}
-                />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  stroke="#6b7280"
-                  fontSize={12}
-                  tickFormatter={(value) => `$${value / 1000}k`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1f2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                  }}
-                  labelStyle={{ color: '#fff' }}
-                  formatter={(value: number) => [`$${value.toLocaleString()}`, '']}
-                />
-                <Legend />
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="mrr"
-                  name="MRR"
-                  stroke="#22c55e"
-                  strokeWidth={2}
-                  dot={{ fill: '#22c55e' }}
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="arr"
-                  name="ARR"
-                  stroke="#8b5cf6"
-                  strokeWidth={2}
-                  dot={{ fill: '#8b5cf6' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
 
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Subscription Breakdown */}
-        <Card>
-          <div className="p-4 border-b border-surface-800">
-            <h3 className="font-medium text-white">Subscription Breakdown</h3>
-            <p className="text-sm text-surface-500">By plan type</p>
-          </div>
-          <div className="p-4 h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={subscriptionData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {subscriptionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1f2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                  }}
-                  labelStyle={{ color: '#fff' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex flex-wrap justify-center gap-4 mt-2">
-              {subscriptionData.map((item) => (
-                <div key={item.name} className="flex items-center gap-2">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: item.color }}
-                  />
-                  <span className="text-xs text-surface-400">
-                    {item.name} ({item.value})
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
+          {/* Charts Row 2 */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Subscription Breakdown */}
+            <Card>
+              <div className="p-4 border-b border-surface-800">
+                <h3 className="font-medium text-white">Subscription Breakdown</h3>
+                <p className="text-sm text-surface-500">By plan type</p>
+              </div>
+              <div className="p-4 h-[250px]">
+                {data?.subscriptionData && data.subscriptionData.some(d => d.value > 0) ? (
+                  <>
+                    <ResponsiveContainer width="100%" height="80%">
+                      <PieChart>
+                        <Pie
+                          data={data.subscriptionData.filter(d => d.value > 0)}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {data.subscriptionData.filter(d => d.value > 0).map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="flex flex-wrap justify-center gap-4">
+                      {data.subscriptionData.filter(d => d.value > 0).map((item) => (
+                        <div key={item.name} className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                          <span className="text-xs text-surface-400">{item.name} ({item.value})</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <EmptyChart message="No subscriptions yet" />
+                )}
+              </div>
+            </Card>
 
-        {/* Sessions by Day */}
-        <Card>
-          <div className="p-4 border-b border-surface-800">
-            <h3 className="font-medium text-white">Sessions by Day</h3>
-            <p className="text-sm text-surface-500">Training sessions this week</p>
-          </div>
-          <div className="p-4 h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={sessionData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="day" stroke="#6b7280" fontSize={12} />
-                <YAxis stroke="#6b7280" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1f2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                  }}
-                  labelStyle={{ color: '#fff' }}
-                />
-                <Bar dataKey="sessions" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
+            {/* Sessions by Day */}
+            <Card>
+              <div className="p-4 border-b border-surface-800">
+                <h3 className="font-medium text-white">Sessions by Day</h3>
+                <p className="text-sm text-surface-500">Training sessions this week</p>
+              </div>
+              <div className="p-4 h-[250px]">
+                {data?.sessionData && data.sessionData.some(d => d.sessions > 0) ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data.sessionData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                      <XAxis dataKey="day" stroke="#6b7280" fontSize={12} />
+                      <YAxis stroke="#6b7280" fontSize={12} />
+                      <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }} />
+                      <Bar dataKey="sessions" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <EmptyChart message="No session data yet" />
+                )}
+              </div>
+            </Card>
 
-        {/* User Retention */}
-        <Card>
-          <div className="p-4 border-b border-surface-800">
-            <h3 className="font-medium text-white">User Retention</h3>
-            <p className="text-sm text-surface-500">Cohort retention rate</p>
+            {/* User Retention */}
+            <Card>
+              <div className="p-4 border-b border-surface-800">
+                <h3 className="font-medium text-white">User Retention</h3>
+                <p className="text-sm text-surface-500">Cohort retention rate</p>
+              </div>
+              <div className="p-4 h-[250px]">
+                {hasData && data?.retentionData ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={data.retentionData}>
+                      <defs>
+                        <linearGradient id="colorRetention" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                      <XAxis dataKey="week" stroke="#6b7280" fontSize={10} />
+                      <YAxis stroke="#6b7280" fontSize={12} tickFormatter={(value) => `${value}%`} />
+                      <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }} formatter={(value: number) => [`${value}%`, 'Retention']} />
+                      <Area type="monotone" dataKey="rate" stroke="#f59e0b" fillOpacity={1} fill="url(#colorRetention)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <EmptyChart message="Not enough data for retention" />
+                )}
+              </div>
+            </Card>
           </div>
-          <div className="p-4 h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={retentionData}>
-                <defs>
-                  <linearGradient id="colorRetention" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="week" stroke="#6b7280" fontSize={10} />
-                <YAxis stroke="#6b7280" fontSize={12} tickFormatter={(value) => `${value}%`} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1f2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                  }}
-                  labelStyle={{ color: '#fff' }}
-                  formatter={(value: number) => [`${value}%`, 'Retention']}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="rate"
-                  stroke="#f59e0b"
-                  fillOpacity={1}
-                  fill="url(#colorRetention)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
 
-      {/* Additional Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp size={16} className="text-green-400" />
-            <span className="text-sm text-surface-400">Conversion Rate</span>
+          {/* Additional Metrics */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <ArrowUpRight size={16} className="text-green-400" />
+                <span className="text-sm text-surface-400">Conversion Rate</span>
+              </div>
+              <p className="text-xl font-bold text-white">{data?.additionalMetrics.conversionRate || 0}%</p>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <ArrowDownRight size={16} className="text-red-400" />
+                <span className="text-sm text-surface-400">Churn Rate</span>
+              </div>
+              <p className="text-xl font-bold text-white">{data?.additionalMetrics.churnRate || 0}%</p>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar size={16} className="text-blue-400" />
+                <span className="text-sm text-surface-400">Avg. Subscription</span>
+              </div>
+              <p className="text-xl font-bold text-white">{data?.additionalMetrics.avgSubscriptionLength || 0} months</p>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign size={16} className="text-green-400" />
+                <span className="text-sm text-surface-400">LTV</span>
+              </div>
+              <p className="text-xl font-bold text-white">${data?.additionalMetrics.ltv || 0}</p>
+            </Card>
           </div>
-          <p className="text-xl font-bold text-white">12.5%</p>
-          <p className="text-xs text-green-400 mt-1">+2.3% vs last month</p>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingDown size={16} className="text-red-400" />
-            <span className="text-sm text-surface-400">Churn Rate</span>
-          </div>
-          <p className="text-xl font-bold text-white">3.2%</p>
-          <p className="text-xs text-green-400 mt-1">-0.8% vs last month</p>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Calendar size={16} className="text-blue-400" />
-            <span className="text-sm text-surface-400">Avg. Subscription Length</span>
-          </div>
-          <p className="text-xl font-bold text-white">8.4 months</p>
-          <p className="text-xs text-surface-500 mt-1">Across all plans</p>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <DollarSign size={16} className="text-green-400" />
-            <span className="text-sm text-surface-400">LTV</span>
-          </div>
-          <p className="text-xl font-bold text-white">$142</p>
-          <p className="text-xs text-green-400 mt-1">+$12 vs last quarter</p>
-        </Card>
-      </div>
+        </>
+      )}
     </div>
   );
 }

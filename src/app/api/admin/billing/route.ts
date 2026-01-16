@@ -3,12 +3,19 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { validateAdminSession } from '@/services/admin/auth';
 import { logBillingEvent } from '@/services/admin/audit';
 
+// Tier pricing
+const tierPricing: Record<string, number> = {
+  starter: 79,
+  professional: 149,
+  enterprise: 249,
+  free: 0,
+};
 
 // GET /api/admin/billing - Get billing stats and failed payments
 export async function GET(request: NextRequest) {
   try {
-    // Validate session
-    const sessionToken = request.cookies.get('admin_session')?.value;
+    // Validate session from header
+    const sessionToken = request.headers.get('x-admin-session');
     if (!sessionToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -23,90 +30,106 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const action = searchParams.get('action');
+    const supabase = getSupabaseAdmin();
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Get billing overview stats
-    if (action === 'stats') {
-      // In production, this would query Stripe or your billing system
-      // For now, return demo data
-      const stats = {
-        mrr: 18450,
-        mrrChange: 8.2,
-        arr: 221400,
-        activeSubscriptions: 567,
-        trialUsers: 89,
-        churnRate: 3.2,
-        avgRevPerUser: 32.54,
-        lifetimeValue: 142,
-      };
+    // Fetch facilities data for subscription metrics
+    const { data: facilities, error: facilitiesError } = await supabase
+      .from('facilities')
+      .select('id, subscription_tier, subscription_status, created_at, owner_id, updated_at');
 
-      return NextResponse.json(stats);
+    if (facilitiesError) {
+      console.error('Error fetching facilities:', facilitiesError);
     }
 
-    // Get failed payments
-    if (action === 'failed-payments') {
-      // In production, query failed payment attempts from Stripe
-      const failedPayments = [
-        {
-          id: 'pi_1',
-          user_email: 'john@example.com',
-          amount: 29.99,
-          plan: 'Pro Monthly',
-          failure_reason: 'card_declined',
-          failed_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          retry_count: 1,
-        },
-        {
-          id: 'pi_2',
-          user_email: 'jane@example.com',
-          amount: 249.99,
-          plan: 'Business Annual',
-          failure_reason: 'insufficient_funds',
-          failed_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          retry_count: 2,
-        },
-      ];
-
-      return NextResponse.json({ failedPayments });
-    }
-
-    // Get recent transactions
-    if (action === 'transactions') {
-      const limit = parseInt(searchParams.get('limit') || '20', 10);
-
-      // In production, query from Stripe or transactions table
-      const transactions = [
-        {
-          id: 'txn_1',
-          user_email: 'alice@example.com',
-          type: 'subscription',
-          amount: 29.99,
-          status: 'succeeded',
-          created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-        },
-        {
-          id: 'txn_2',
-          user_email: 'bob@example.com',
-          type: 'upgrade',
-          amount: 49.99,
-          status: 'succeeded',
-          created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        },
-      ];
-
-      return NextResponse.json({ transactions });
-    }
-
-    // Get subscription breakdown
-    const subscriptionBreakdown = {
-      free: 680,
-      basic: 420,
-      pro: 280,
-      business: 70,
+    // Calculate MRR and subscription counts
+    let mrr = 0;
+    let activeSubscriptions = 0;
+    let trialUsers = 0;
+    const subscriptionBreakdown: Record<string, number> = {
+      free: 0,
+      starter: 0,
+      professional: 0,
+      enterprise: 0,
     };
 
-    return NextResponse.json({ subscriptionBreakdown });
+    if (facilities) {
+      facilities.forEach((facility) => {
+        const tier = (facility.subscription_tier?.toLowerCase() || 'free') as string;
+        subscriptionBreakdown[tier] = (subscriptionBreakdown[tier] || 0) + 1;
+
+        if (facility.subscription_status === 'active' || !facility.subscription_status) {
+          mrr += tierPricing[tier] || 0;
+          if (tier !== 'free') {
+            activeSubscriptions++;
+          }
+        } else if (facility.subscription_status === 'trialing') {
+          trialUsers++;
+        }
+      });
+    }
+
+    // Calculate ARR
+    const arr = mrr * 12;
+
+    // Calculate ARPU (Average Revenue Per User)
+    const avgRevPerUser = activeSubscriptions > 0 ? mrr / activeSubscriptions : 0;
+
+    // Calculate LTV (simplified: ARPU * average months of subscription)
+    const lifetimeValue = avgRevPerUser * 8;
+
+    // Calculate churn rate (facilities that churned in last 30 days)
+    const churnedFacilities = facilities?.filter(f =>
+      f.subscription_status === 'canceled' &&
+      new Date(f.updated_at) >= thirtyDaysAgo
+    ).length || 0;
+
+    const totalPaidEver = activeSubscriptions + churnedFacilities;
+    const churnRate = totalPaidEver > 0
+      ? parseFloat((churnedFacilities / totalPaidEver * 100).toFixed(1))
+      : 0;
+
+    // For failed payments and transactions, we'd need Stripe integration
+    // Return empty arrays for now (real data would come from Stripe webhooks)
+    const failedPayments: Array<{
+      id: string;
+      user_email: string;
+      amount: number;
+      plan: string;
+      failure_reason: string;
+      failed_at: string;
+      retry_count: number;
+    }> = [];
+
+    const transactions: Array<{
+      id: string;
+      user_email: string;
+      type: string;
+      amount: number;
+      status: string;
+      created_at: string;
+    }> = [];
+
+    // Recovery rate placeholder (would need failed payment tracking)
+    const recoveryRate = 0;
+
+    return NextResponse.json({
+      stats: {
+        mrr,
+        mrrChange: 0, // Would need historical data
+        arr,
+        activeSubscriptions,
+        trialUsers,
+        churnRate,
+        avgRevPerUser: parseFloat(avgRevPerUser.toFixed(2)),
+        lifetimeValue: parseFloat(lifetimeValue.toFixed(2)),
+        recoveryRate,
+      },
+      failedPayments,
+      transactions,
+      subscriptionBreakdown,
+    });
   } catch (error) {
     console.error('Billing API error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -116,8 +139,8 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/billing - Perform billing actions
 export async function POST(request: NextRequest) {
   try {
-    // Validate session
-    const sessionToken = request.cookies.get('admin_session')?.value;
+    // Validate session from header
+    const sessionToken = request.headers.get('x-admin-session');
     if (!sessionToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

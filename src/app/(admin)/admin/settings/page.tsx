@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '@/components/layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { useAdminStore } from '@/stores/adminStore';
 import {
   Settings,
   Flag,
@@ -13,21 +14,18 @@ import {
   Database,
   Save,
   RefreshCw,
-  Toggle,
-  AlertTriangle,
-  CheckCircle2,
   Plus,
   Trash2,
-  Edit2,
+  Sparkles,
 } from 'lucide-react';
 
 // Types
 interface FeatureFlag {
   id: string;
   name: string;
-  key: string;
-  enabled: boolean;
   description: string;
+  is_enabled: boolean;
+  rollout_percentage: number;
   updated_at: string;
 }
 
@@ -41,28 +39,18 @@ interface AlertThreshold {
   enabled: boolean;
 }
 
-// Demo data
-const demoFeatureFlags: FeatureFlag[] = [
-  { id: '1', name: 'New Dashboard', key: 'new_dashboard', enabled: true, description: 'Enable the redesigned dashboard experience', updated_at: new Date().toISOString() },
-  { id: '2', name: 'AI Training Tips', key: 'ai_training_tips', enabled: false, description: 'AI-powered personalized training recommendations', updated_at: new Date().toISOString() },
-  { id: '3', name: 'Video Uploads', key: 'video_uploads', enabled: true, description: 'Allow users to upload training videos', updated_at: new Date().toISOString() },
-  { id: '4', name: 'Social Features', key: 'social_features', enabled: false, description: 'Enable social networking features', updated_at: new Date().toISOString() },
-  { id: '5', name: 'Beta Features', key: 'beta_features', enabled: false, description: 'Enable experimental beta features for testing', updated_at: new Date().toISOString() },
-];
-
-const demoAlertThresholds: AlertThreshold[] = [
-  { id: '1', metric: 'Failed Payments', operator: 'gt', value: 10, unit: 'per hour', action: 'Email super admins', enabled: true },
-  { id: '2', metric: 'Support Queue', operator: 'gt', value: 50, unit: 'tickets', action: 'Slack notification', enabled: true },
-  { id: '3', metric: 'Error Rate', operator: 'gt', value: 5, unit: '%', action: 'PagerDuty alert', enabled: true },
-  { id: '4', metric: 'Response Time', operator: 'gt', value: 2000, unit: 'ms', action: 'Email ops team', enabled: false },
-];
+// Empty initial state for alert thresholds (would need database table)
+const emptyAlertThresholds: AlertThreshold[] = [];
 
 export default function SettingsPage() {
-  const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>(demoFeatureFlags);
-  const [alertThresholds, setAlertThresholds] = useState<AlertThreshold[]>(demoAlertThresholds);
+  const { sessionToken } = useAdminStore();
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([]);
+  const [alertThresholds, setAlertThresholds] = useState<AlertThreshold[]>(emptyAlertThresholds);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSeeding, setIsSeeding] = useState(false);
   const [activeTab, setActiveTab] = useState('features');
+  const [error, setError] = useState<string | null>(null);
 
   // System settings state
   const [systemSettings, setSystemSettings] = useState({
@@ -84,27 +72,33 @@ export default function SettingsPage() {
 
   // Fetch feature flags from API
   const fetchFeatureFlags = useCallback(async () => {
+    if (!sessionToken) return;
+
+    setIsLoading(true);
+    setError(null);
+
     try {
-      const response = await fetch('/api/admin/settings?type=feature_flags');
+      const response = await fetch('/api/admin/settings?type=feature_flags', {
+        headers: {
+          'x-admin-session': sessionToken,
+        },
+      });
+
       if (response.ok) {
         const data = await response.json();
-        if (data.featureFlags && data.featureFlags.length > 0) {
-          setFeatureFlags(data.featureFlags.map((f: { id: string; name: string; description: string; enabled: boolean; updated_at: string }) => ({
-            id: f.id,
-            name: f.name,
-            key: f.name.toLowerCase().replace(/\s+/g, '_'),
-            enabled: f.enabled,
-            description: f.description || '',
-            updated_at: f.updated_at,
-          })));
-        }
+        setFeatureFlags(data.featureFlags || []);
+      } else if (response.status === 403) {
+        setError('Insufficient permissions to view settings');
+      } else {
+        setError('Failed to load feature flags');
       }
-    } catch (error) {
-      console.error('Error fetching feature flags:', error);
+    } catch (err) {
+      console.error('Error fetching feature flags:', err);
+      setError('Failed to load feature flags');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [sessionToken]);
 
   useEffect(() => {
     fetchFeatureFlags();
@@ -112,17 +106,22 @@ export default function SettingsPage() {
 
   // Toggle feature flag
   const toggleFeatureFlag = async (flagId: string) => {
+    if (!sessionToken) return;
+
     // Optimistic update
     setFeatureFlags((prev) =>
       prev.map((flag) =>
-        flag.id === flagId ? { ...flag, enabled: !flag.enabled, updated_at: new Date().toISOString() } : flag
+        flag.id === flagId ? { ...flag, is_enabled: !flag.is_enabled, updated_at: new Date().toISOString() } : flag
       )
     );
 
     try {
       const response = await fetch('/api/admin/settings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-session': sessionToken,
+        },
         body: JSON.stringify({
           type: 'feature_flag',
           action: 'toggle',
@@ -134,18 +133,101 @@ export default function SettingsPage() {
         // Revert on failure
         setFeatureFlags((prev) =>
           prev.map((flag) =>
-            flag.id === flagId ? { ...flag, enabled: !flag.enabled } : flag
+            flag.id === flagId ? { ...flag, is_enabled: !flag.is_enabled } : flag
           )
         );
       }
-    } catch (error) {
-      console.error('Error toggling feature flag:', error);
+    } catch (err) {
+      console.error('Error toggling feature flag:', err);
       // Revert on failure
       setFeatureFlags((prev) =>
         prev.map((flag) =>
-          flag.id === flagId ? { ...flag, enabled: !flag.enabled } : flag
+          flag.id === flagId ? { ...flag, is_enabled: !flag.is_enabled } : flag
         )
       );
+    }
+  };
+
+  // Seed default flags
+  const seedDefaultFlags = async () => {
+    if (!sessionToken) return;
+
+    setIsSeeding(true);
+    try {
+      const response = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-session': sessionToken,
+        },
+        body: JSON.stringify({
+          type: 'feature_flag',
+          action: 'seed',
+        }),
+      });
+
+      if (response.ok) {
+        // Refresh the list
+        await fetchFeatureFlags();
+      }
+    } catch (err) {
+      console.error('Error seeding flags:', err);
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  // Create new flag
+  const createFlag = async (name: string, description: string) => {
+    if (!sessionToken) return;
+
+    try {
+      const response = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-session': sessionToken,
+        },
+        body: JSON.stringify({
+          type: 'feature_flag',
+          action: 'create',
+          name,
+          description,
+          enabled: false,
+        }),
+      });
+
+      if (response.ok) {
+        await fetchFeatureFlags();
+      }
+    } catch (err) {
+      console.error('Error creating flag:', err);
+    }
+  };
+
+  // Delete flag
+  const deleteFlag = async (flagId: string) => {
+    if (!sessionToken) return;
+
+    try {
+      const response = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-session': sessionToken,
+        },
+        body: JSON.stringify({
+          type: 'feature_flag',
+          action: 'delete',
+          flagId,
+        }),
+      });
+
+      if (response.ok) {
+        setFeatureFlags(prev => prev.filter(f => f.id !== flagId));
+      }
+    } catch (err) {
+      console.error('Error deleting flag:', err);
     }
   };
 
@@ -164,8 +246,8 @@ export default function SettingsPage() {
     try {
       await new Promise((resolve) => setTimeout(resolve, 500));
       // Settings are saved individually via their respective APIs
-    } catch (error) {
-      console.error('Error saving settings:', error);
+    } catch (err) {
+      console.error('Error saving settings:', err);
     } finally {
       setIsSaving(false);
     }
@@ -178,6 +260,9 @@ export default function SettingsPage() {
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'system', label: 'System', icon: Database },
   ];
+
+  // Generate key from name
+  const nameToKey = (name: string) => name.toLowerCase().replace(/\s+/g, '_');
 
   return (
     <div className="space-y-6">
@@ -196,6 +281,12 @@ export default function SettingsPage() {
           </Button>
         }
       />
+
+      {error && (
+        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400">
+          {error}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-2 border-b border-surface-800 pb-4">
@@ -223,36 +314,71 @@ export default function SettingsPage() {
               <h3 className="font-medium text-white">Feature Flags</h3>
               <p className="text-sm text-surface-500">Enable or disable features across the platform</p>
             </div>
-            <Button variant="outline" size="sm" leftIcon={<Plus size={14} />}>
-              Add Flag
-            </Button>
+            <div className="flex gap-2">
+              {featureFlags.length === 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Sparkles size={14} />}
+                  onClick={seedDefaultFlags}
+                  disabled={isSeeding}
+                >
+                  {isSeeding ? 'Seeding...' : 'Seed Default Flags'}
+                </Button>
+              )}
+              <Button variant="outline" size="sm" leftIcon={<Plus size={14} />} disabled>
+                Add Flag
+              </Button>
+            </div>
           </div>
           <div className="divide-y divide-surface-800">
-            {featureFlags.map((flag) => (
-              <div key={flag.id} className="p-4 flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-medium text-white">{flag.name}</h4>
-                    <code className="text-xs text-surface-500 bg-surface-800 px-2 py-0.5 rounded">
-                      {flag.key}
-                    </code>
-                  </div>
-                  <p className="text-sm text-surface-400 mt-1">{flag.description}</p>
-                </div>
-                <button
-                  onClick={() => toggleFeatureFlag(flag.id)}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${
-                    flag.enabled ? 'bg-green-500' : 'bg-surface-700'
-                  }`}
-                >
-                  <span
-                    className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                      flag.enabled ? 'left-7' : 'left-1'
-                    }`}
-                  />
-                </button>
+            {isLoading ? (
+              <div className="p-8 text-center text-surface-500">
+                <RefreshCw size={24} className="mx-auto mb-2 animate-spin" />
+                Loading feature flags...
               </div>
-            ))}
+            ) : featureFlags.length === 0 ? (
+              <div className="p-8 text-center text-surface-500">
+                <Flag size={24} className="mx-auto mb-2 opacity-50" />
+                <p>No feature flags configured</p>
+                <p className="text-sm mt-2">Click "Seed Default Flags" to create the initial feature flags</p>
+              </div>
+            ) : (
+              featureFlags.map((flag) => (
+                <div key={flag.id} className="p-4 flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-medium text-white">{flag.name}</h4>
+                      <code className="text-xs text-surface-500 bg-surface-800 px-2 py-0.5 rounded">
+                        {nameToKey(flag.name)}
+                      </code>
+                    </div>
+                    <p className="text-sm text-surface-400 mt-1">{flag.description}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => deleteFlag(flag.id)}
+                      className="p-2 text-surface-500 hover:text-red-400 transition-colors"
+                      title="Delete flag"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    <button
+                      onClick={() => toggleFeatureFlag(flag.id)}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        flag.is_enabled ? 'bg-green-500' : 'bg-surface-700'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                          flag.is_enabled ? 'left-7' : 'left-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </Card>
       )}
@@ -265,39 +391,46 @@ export default function SettingsPage() {
               <h3 className="font-medium text-white">Alert Thresholds</h3>
               <p className="text-sm text-surface-500">Configure automated alerts for system metrics</p>
             </div>
-            <Button variant="outline" size="sm" leftIcon={<Plus size={14} />}>
+            <Button variant="outline" size="sm" leftIcon={<Plus size={14} />} disabled>
               Add Alert
             </Button>
           </div>
           <div className="divide-y divide-surface-800">
-            {alertThresholds.map((threshold) => (
-              <div key={threshold.id} className="p-4 flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-medium text-white">{threshold.metric}</h4>
-                    <span className="text-sm text-surface-400">
-                      {threshold.operator === 'gt' ? '>' : threshold.operator === 'lt' ? '<' : '='}{' '}
-                      {threshold.value} {threshold.unit}
-                    </span>
-                  </div>
-                  <p className="text-sm text-surface-500 mt-1">Action: {threshold.action}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => toggleAlertThreshold(threshold.id)}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
-                      threshold.enabled ? 'bg-green-500' : 'bg-surface-700'
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                        threshold.enabled ? 'left-7' : 'left-1'
-                      }`}
-                    />
-                  </button>
-                </div>
+            {alertThresholds.length === 0 ? (
+              <div className="p-8 text-center text-surface-500">
+                <Bell size={24} className="mx-auto mb-2 opacity-50" />
+                No alert thresholds configured
               </div>
-            ))}
+            ) : (
+              alertThresholds.map((threshold) => (
+                <div key={threshold.id} className="p-4 flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-medium text-white">{threshold.metric}</h4>
+                      <span className="text-sm text-surface-400">
+                        {threshold.operator === 'gt' ? '>' : threshold.operator === 'lt' ? '<' : '='}{' '}
+                        {threshold.value} {threshold.unit}
+                      </span>
+                    </div>
+                    <p className="text-sm text-surface-500 mt-1">Action: {threshold.action}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => toggleAlertThreshold(threshold.id)}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        threshold.enabled ? 'bg-green-500' : 'bg-surface-700'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                          threshold.enabled ? 'left-7' : 'left-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </Card>
       )}
@@ -346,6 +479,7 @@ export default function SettingsPage() {
                   <button
                     key={template}
                     className="p-3 bg-surface-800 hover:bg-surface-700 rounded-lg text-left transition-colors"
+                    disabled
                   >
                     <p className="text-sm text-white">{template}</p>
                     <p className="text-xs text-surface-500">Edit template</p>
@@ -486,11 +620,11 @@ export default function SettingsPage() {
               <h3 className="font-medium text-red-400">Danger Zone</h3>
             </div>
             <div className="p-4 space-y-3">
-              <Button variant="outline" size="sm" className="text-red-400 border-red-500/30 hover:bg-red-500/10">
+              <Button variant="outline" size="sm" className="text-red-400 border-red-500/30 hover:bg-red-500/10" disabled>
                 <Database size={14} className="mr-2" />
                 Clear Cache
               </Button>
-              <Button variant="outline" size="sm" className="text-red-400 border-red-500/30 hover:bg-red-500/10 ml-2">
+              <Button variant="outline" size="sm" className="text-red-400 border-red-500/30 hover:bg-red-500/10 ml-2" disabled>
                 <RefreshCw size={14} className="mr-2" />
                 Restart Services
               </Button>

@@ -7,8 +7,8 @@ import { logUserEvent } from '@/services/admin/audit';
 // POST /api/admin/users/search - Search users with audit logging
 export async function POST(request: NextRequest) {
   try {
-    // Validate session
-    const sessionToken = request.cookies.get('admin_session')?.value;
+    // Validate session from header
+    const sessionToken = request.headers.get('x-admin-session');
     if (!sessionToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
+    const supabase = getSupabaseAdmin();
     const body = await request.json();
     const { email, reason } = body;
 
@@ -49,31 +50,43 @@ export async function POST(request: NextRequest) {
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined;
     const userAgent = request.headers.get('user-agent') || undefined;
 
-    // Search for users by email (using Supabase auth admin API)
-    // In production, this would query your users table
-    const { data: authUsers, error: authError } = await getSupabaseAdmin().auth.admin.listUsers({
-      perPage: 10,
-    });
+    // Search for users in the users table by email
+    const { data: usersData, error: usersError } = await supabase
+      .from('users')
+      .select('id, email, name, created_at, last_login_at')
+      .ilike('email', `%${email}%`)
+      .limit(10);
 
-    if (authError) {
-      console.error('Error searching users:', authError);
+    if (usersError) {
+      console.error('Error searching users:', usersError);
       return NextResponse.json({ error: 'Failed to search users' }, { status: 500 });
     }
 
-    // Filter by email
-    const matchingUsers = authUsers.users.filter((user) =>
-      user.email?.toLowerCase().includes(email.toLowerCase())
-    );
+    // Get dogs count and facility info for each user
+    const usersWithDetails = await Promise.all((usersData || []).map(async (user) => {
+      const [dogsResult, facilityResult] = await Promise.all([
+        supabase
+          .from('dogs')
+          .select('id', { count: 'exact', head: true })
+          .eq('owner_id', user.id),
+        supabase
+          .from('facility_members')
+          .select('facility:facilities(subscription_tier)')
+          .eq('user_id', user.id)
+          .limit(1)
+          .single(),
+      ]);
 
-    // Map to safe response format (no sensitive data)
-    const users = matchingUsers.slice(0, 10).map((user) => ({
-      id: user.id,
-      email: user.email,
-      name: user.user_metadata?.name || user.user_metadata?.full_name,
-      created_at: user.created_at,
-      last_login: user.last_sign_in_at,
-      email_confirmed: user.email_confirmed_at !== null,
-      is_suspended: user.banned_until !== null,
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        created_at: user.created_at,
+        last_login: user.last_login_at,
+        is_suspended: false, // Would need a suspended field in users table
+        dogs_count: dogsResult.count || 0,
+        subscription_tier: facilityResult.data?.facility?.subscription_tier || 'Free',
+      };
     }));
 
     // Log the search
@@ -83,21 +96,21 @@ export async function POST(request: NextRequest) {
       'search',
       `User search: "${email}"`,
       reason,
-      { ipAddress, userAgent, metadata: { query: email, results: users.length } }
+      { ipAddress, userAgent, metadata: { query: email, results: usersWithDetails.length } }
     );
 
-    return NextResponse.json({ users });
+    return NextResponse.json({ users: usersWithDetails });
   } catch (error) {
     console.error('User search error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// GET /api/admin/users/search/[id] - Get single user details
+// GET /api/admin/users/search - Get single user details
 export async function GET(request: NextRequest) {
   try {
-    // Validate session
-    const sessionToken = request.cookies.get('admin_session')?.value;
+    // Validate session from header
+    const sessionToken = request.headers.get('x-admin-session');
     if (!sessionToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -107,6 +120,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
     }
 
+    const supabase = getSupabaseAdmin();
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('id');
     const reason = searchParams.get('reason');
@@ -115,33 +129,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User ID and reason are required' }, { status: 400 });
     }
 
-    // Get user from Supabase auth
-    const { data: authData, error: authError } = await getSupabaseAdmin().auth.admin.getUserById(userId);
-
-    if (authError || !authData.user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    const user = authData.user;
-
-    // Get additional data from profiles table if exists
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
+    // Get user from users table
+    const { data: user, error: userError } = await supabase
+      .from('users')
       .select('*')
       .eq('id', userId)
       .single();
 
+    if (userError || !user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
     // Get dogs count
-    const { count: dogsCount } = await supabaseAdmin
+    const { count: dogsCount } = await supabase
       .from('dogs')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('owner_id', userId);
 
-    // Get subscription info
-    const { data: subscription } = await supabaseAdmin
-      .from('subscriptions')
-      .select('*')
+    // Get facility/subscription info
+    const { data: facilityMember } = await supabase
+      .from('facility_members')
+      .select('facility:facilities(subscription_tier, subscription_status)')
       .eq('user_id', userId)
+      .limit(1)
       .single();
 
     // Log the view
@@ -157,18 +167,17 @@ export async function GET(request: NextRequest) {
       { ipAddress, userAgent }
     );
 
-    // Return user data (excluding sensitive fields based on role)
+    // Return user data
     const userData = {
       id: user.id,
       email: user.email,
-      name: profile?.name || user.user_metadata?.name,
+      name: user.name,
       created_at: user.created_at,
-      last_login: user.last_sign_in_at,
-      email_confirmed: user.email_confirmed_at !== null,
-      is_suspended: user.banned_until !== null,
+      last_login: user.last_login_at,
+      is_suspended: false,
       dogs_count: dogsCount || 0,
-      subscription_tier: subscription?.tier || 'free',
-      subscription_status: subscription?.status,
+      subscription_tier: facilityMember?.facility?.subscription_tier || 'Free',
+      subscription_status: facilityMember?.facility?.subscription_status,
     };
 
     return NextResponse.json({ user: userData });

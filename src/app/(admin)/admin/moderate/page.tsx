@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { useAdminStore } from '@/stores/adminStore';
 import {
   Flag,
   Eye,
@@ -15,11 +16,7 @@ import {
   User,
   Clock,
   CheckCircle2,
-  XCircle,
   RefreshCw,
-  Filter,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 
 // Types
@@ -37,48 +34,13 @@ interface FlaggedContent {
   user_strikes: number;
 }
 
-// Demo data
-const demoFlaggedContent: FlaggedContent[] = [
-  {
-    id: '1',
-    content_type: 'comment',
-    content_preview: 'This is inappropriate content that was flagged by another user for review...',
-    user_id: 'user_1',
-    user_email: 'baduser@example.com',
-    user_name: 'Bad User',
-    reason: 'Inappropriate language',
-    reported_by: 'reporter@example.com',
-    reported_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    status: 'pending',
-    user_strikes: 1,
-  },
-  {
-    id: '2',
-    content_type: 'image',
-    content_preview: '[Image: dog_training_photo.jpg]',
-    user_id: 'user_2',
-    user_email: 'uploader@example.com',
-    user_name: 'Image Uploader',
-    reason: 'Potentially harmful content',
-    reported_by: 'concerned@example.com',
-    reported_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-    status: 'pending',
-    user_strikes: 0,
-  },
-  {
-    id: '3',
-    content_type: 'post',
-    content_preview: 'Spam post advertising external services...',
-    user_id: 'user_3',
-    user_email: 'spammer@example.com',
-    user_name: 'Spammer Account',
-    reason: 'Spam/Advertising',
-    reported_by: 'multiple',
-    reported_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    status: 'pending',
-    user_strikes: 2,
-  },
-];
+interface Stats {
+  pending: number;
+  reviewed: number;
+  removed: number;
+  dismissed: number;
+  banned: number;
+}
 
 // Content type icons
 const contentTypeIcons: Record<string, React.ReactNode> = {
@@ -97,51 +59,107 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 };
 
 export default function ModeratePage() {
-  const [flaggedContent, setFlaggedContent] = useState<FlaggedContent[]>(demoFlaggedContent);
-  const [isLoading, setIsLoading] = useState(false);
+  const { sessionToken } = useAdminStore();
+  const [flaggedContent, setFlaggedContent] = useState<FlaggedContent[]>([]);
+  const [stats, setStats] = useState<Stats>({ pending: 0, reviewed: 0, removed: 0, dismissed: 0, banned: 0 });
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<FlaggedContent | null>(null);
   const [actionModal, setActionModal] = useState<{ type: string; item: FlaggedContent } | null>(null);
   const [actionNote, setActionNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [filter, setFilter] = useState('pending');
+  const [error, setError] = useState<string | null>(null);
 
-  // Stats
-  const stats = {
-    pending: flaggedContent.filter((c) => c.status === 'pending').length,
-    reviewed: flaggedContent.filter((c) => c.status === 'reviewed').length,
-    removed: flaggedContent.filter((c) => c.status === 'removed').length,
+  // Fetch flagged content
+  const fetchFlaggedContent = async () => {
+    if (!sessionToken) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/admin/moderation?status=${filter}`, {
+        headers: {
+          'x-admin-session': sessionToken,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFlaggedContent(data.flaggedContent || []);
+        setStats(data.stats || { pending: 0, reviewed: 0, removed: 0, dismissed: 0, banned: 0 });
+      } else if (response.status === 403) {
+        setError('Insufficient permissions to view moderation queue');
+      } else {
+        setError('Failed to load moderation queue');
+      }
+    } catch (err) {
+      console.error('Error fetching flagged content:', err);
+      setError('Failed to load moderation queue');
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchFlaggedContent();
+  }, [sessionToken, filter]);
 
   // Handle moderation action
   const handleAction = async (action: string, item: FlaggedContent, note?: string) => {
+    if (!sessionToken) return;
+
     setIsSubmitting(true);
     try {
-      // In production, call API
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const response = await fetch('/api/admin/moderation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-session': sessionToken,
+        },
+        body: JSON.stringify({
+          action,
+          contentId: item.id,
+          userId: item.user_id,
+          note,
+        }),
+      });
 
-      // Update local state
-      setFlaggedContent((prev) =>
-        prev.map((c) => {
-          if (c.id === item.id) {
-            switch (action) {
-              case 'remove':
-                return { ...c, status: 'removed' as const };
-              case 'dismiss':
-                return { ...c, status: 'dismissed' as const };
-              case 'warn':
-                return { ...c, status: 'reviewed' as const, user_strikes: c.user_strikes + 1 };
-              default:
-                return c;
+      if (response.ok) {
+        // Update local state
+        setFlaggedContent((prev) =>
+          prev.map((c) => {
+            if (c.id === item.id) {
+              switch (action) {
+                case 'remove':
+                  return { ...c, status: 'removed' as const };
+                case 'dismiss':
+                  return { ...c, status: 'dismissed' as const };
+                case 'warn':
+                  return { ...c, status: 'reviewed' as const, user_strikes: c.user_strikes + 1 };
+                case 'ban':
+                  return { ...c, status: 'removed' as const };
+                default:
+                  return c;
+              }
             }
-          }
-          return c;
-        })
-      );
+            return c;
+          })
+        );
+
+        // Update stats
+        setStats(prev => ({
+          ...prev,
+          pending: prev.pending - 1,
+          [action === 'dismiss' ? 'dismissed' : action === 'remove' || action === 'ban' ? 'removed' : 'reviewed']:
+            prev[action === 'dismiss' ? 'dismissed' : action === 'remove' || action === 'ban' ? 'removed' : 'reviewed'] + 1,
+        }));
+      }
 
       setActionModal(null);
       setActionNote('');
-    } catch (error) {
-      console.error('Error performing action:', error);
+    } catch (err) {
+      console.error('Error performing action:', err);
     } finally {
       setIsSubmitting(false);
     }
@@ -162,12 +180,6 @@ export default function ModeratePage() {
     return `${diffDays}d ago`;
   };
 
-  // Filtered content
-  const filteredContent = flaggedContent.filter((c) => {
-    if (filter === 'all') return true;
-    return c.status === filter;
-  });
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -178,13 +190,19 @@ export default function ModeratePage() {
             variant="outline"
             size="sm"
             leftIcon={<RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />}
-            onClick={() => setIsLoading(true)}
+            onClick={fetchFlaggedContent}
             disabled={isLoading}
           >
             Refresh
           </Button>
         }
       />
+
+      {error && (
+        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400">
+          {error}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -195,7 +213,7 @@ export default function ModeratePage() {
             </div>
             <div>
               <p className="text-sm text-surface-400">Pending Review</p>
-              <p className="text-xl font-bold text-white">{stats.pending}</p>
+              <p className="text-xl font-bold text-white">{isLoading ? '...' : stats.pending}</p>
             </div>
           </div>
         </Card>
@@ -205,8 +223,8 @@ export default function ModeratePage() {
               <Trash2 size={18} className="text-red-400" />
             </div>
             <div>
-              <p className="text-sm text-surface-400">Removed Today</p>
-              <p className="text-xl font-bold text-white">{stats.removed}</p>
+              <p className="text-sm text-surface-400">Removed</p>
+              <p className="text-xl font-bold text-white">{isLoading ? '...' : stats.removed}</p>
             </div>
           </div>
         </Card>
@@ -217,7 +235,7 @@ export default function ModeratePage() {
             </div>
             <div>
               <p className="text-sm text-surface-400">Reviewed</p>
-              <p className="text-xl font-bold text-white">{stats.reviewed}</p>
+              <p className="text-xl font-bold text-white">{isLoading ? '...' : stats.reviewed}</p>
             </div>
           </div>
         </Card>
@@ -228,7 +246,7 @@ export default function ModeratePage() {
             </div>
             <div>
               <p className="text-sm text-surface-400">Users Banned</p>
-              <p className="text-xl font-bold text-white">2</p>
+              <p className="text-xl font-bold text-white">{isLoading ? '...' : stats.banned}</p>
             </div>
           </div>
         </Card>
@@ -258,18 +276,23 @@ export default function ModeratePage() {
         </div>
 
         <div className="divide-y divide-surface-800">
-          {filteredContent.length === 0 ? (
+          {isLoading ? (
+            <div className="p-8 text-center text-surface-500">
+              <RefreshCw size={24} className="mx-auto mb-2 animate-spin" />
+              Loading moderation queue...
+            </div>
+          ) : flaggedContent.length === 0 ? (
             <div className="p-8 text-center text-surface-500">
               <CheckCircle2 size={24} className="mx-auto mb-2 text-green-400" />
               No flagged content to review
             </div>
           ) : (
-            filteredContent.map((item) => (
+            flaggedContent.map((item) => (
               <div key={item.id} className="p-4">
                 <div className="flex items-start gap-4">
                   {/* Content Type Icon */}
                   <div className="p-2 bg-surface-800 rounded-lg text-surface-400">
-                    {contentTypeIcons[item.content_type]}
+                    {contentTypeIcons[item.content_type] || <MessageSquare size={14} />}
                   </div>
 
                   {/* Content Details */}
@@ -347,7 +370,7 @@ export default function ModeratePage() {
               <h3 className="font-medium text-white">Content Review</h3>
               <button
                 onClick={() => setSelectedItem(null)}
-                className="text-surface-500 hover:text-white"
+                className="text-surface-500 hover:text-white text-2xl leading-none"
               >
                 &times;
               </button>

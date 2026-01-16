@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { PageHeader } from '@/components/layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { useAdminStore } from '@/stores/adminStore';
 import {
   Search,
   AlertTriangle,
@@ -17,6 +18,7 @@ import {
   Eye,
   Lock,
   FileText,
+  RefreshCw,
 } from 'lucide-react';
 
 // Types
@@ -31,63 +33,56 @@ interface UserResult {
   dogs_count: number;
 }
 
-// Demo search results
-const demoUsers: UserResult[] = [
-  {
-    id: '1',
-    email: 'john.doe@example.com',
-    name: 'John Doe',
-    created_at: '2024-06-15T10:00:00Z',
-    last_login: '2025-01-14T08:30:00Z',
-    subscription_tier: 'Pro',
-    is_suspended: false,
-    dogs_count: 2,
-  },
-  {
-    id: '2',
-    email: 'jane.smith@example.com',
-    name: 'Jane Smith',
-    created_at: '2024-08-20T14:00:00Z',
-    last_login: '2025-01-13T16:45:00Z',
-    subscription_tier: 'Business',
-    is_suspended: false,
-    dogs_count: 5,
-  },
-];
-
 export default function UserManagementPage() {
+  const { sessionToken } = useAdminStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchReason, setSearchReason] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<UserResult[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Handle search
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!searchQuery.trim() || !searchReason.trim()) {
+    if (!searchQuery.trim() || !searchReason.trim() || !sessionToken) {
       return;
     }
 
     setIsSearching(true);
     setHasSearched(true);
+    setError(null);
 
     try {
-      // In production, this would call the API with audit logging
-      // For demo, simulate search with demo data
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const response = await fetch('/api/admin/users/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-session': sessionToken,
+        },
+        body: JSON.stringify({
+          email: searchQuery,
+          reason: searchReason,
+        }),
+      });
 
-      const results = demoUsers.filter(
-        (user) =>
-          user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.name?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-
-      setSearchResults(results);
-    } catch (error) {
-      console.error('Search error:', error);
+      if (response.ok) {
+        const data = await response.json();
+        setSearchResults(data.users || []);
+      } else if (response.status === 403) {
+        setError('Insufficient permissions to search users');
+        setSearchResults([]);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Search failed');
+        setSearchResults([]);
+      }
+    } catch (err) {
+      console.error('Search error:', err);
+      setError('An error occurred while searching');
+      setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
@@ -125,6 +120,12 @@ export default function UserManagementPage() {
           </div>
         </div>
       </Card>
+
+      {error && (
+        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400">
+          {error}
+        </div>
+      )}
 
       {/* Search Form */}
       <Card>
@@ -177,6 +178,7 @@ export default function UserManagementPage() {
             type="submit"
             variant="primary"
             disabled={!searchQuery.trim() || !searchReason || isSearching}
+            leftIcon={isSearching ? <RefreshCw size={14} className="animate-spin" /> : undefined}
           >
             {isSearching ? 'Searching...' : 'Search'}
           </Button>
@@ -267,7 +269,7 @@ export default function UserManagementPage() {
               <h3 className="font-medium text-white">User Details</h3>
               <button
                 onClick={() => setSelectedUser(null)}
-                className="text-surface-500 hover:text-white"
+                className="text-surface-500 hover:text-white text-2xl leading-none"
               >
                 &times;
               </button>
@@ -312,7 +314,7 @@ export default function UserManagementPage() {
                   </div>
                   <div>
                     <label className="text-xs text-surface-500">User ID</label>
-                    <p className="text-sm text-white font-mono">{selectedUser.id}</p>
+                    <p className="text-sm text-white font-mono text-xs">{selectedUser.id}</p>
                   </div>
                 </div>
               </div>
@@ -329,11 +331,11 @@ export default function UserManagementPage() {
               <div>
                 <h4 className="text-sm font-medium text-surface-400 mb-3">Actions</h4>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" disabled>
                     <Mail size={14} className="mr-1" />
                     Send Email
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" disabled>
                     <FileText size={14} className="mr-1" />
                     View Tickets
                   </Button>
@@ -342,6 +344,7 @@ export default function UserManagementPage() {
                       variant="outline"
                       size="sm"
                       className="text-green-400 border-green-500/30"
+                      disabled
                     >
                       <CheckCircle2 size={14} className="mr-1" />
                       Unsuspend Account
@@ -351,6 +354,7 @@ export default function UserManagementPage() {
                       variant="outline"
                       size="sm"
                       className="text-red-400 border-red-500/30"
+                      disabled
                     >
                       <Ban size={14} className="mr-1" />
                       Suspend Account
