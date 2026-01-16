@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { useAdmin } from '@/stores/adminStore';
+import { useAdmin, useAdminStore } from '@/stores/adminStore';
 import {
   Users,
   DollarSign,
@@ -108,38 +108,92 @@ function MetricCard({
   return content;
 }
 
-// Demo data for the dashboard
-const demoMetrics = {
-  activeUsers: 1247,
-  activeUsersChange: 12,
-  mrr: 18450,
-  mrrChange: 8,
-  openTickets: 7,
-  urgentTickets: 3,
-  badgeQueue: 12,
-  featuredBadges: 2,
-  dogsActive: 3892,
-  dogsNew: 340,
-  sessionsToday: 12450,
-  avgSessions: 8.2,
-  systemHealth: 99.8,
-  flaggedContent: 2,
+// Types for metrics
+interface RecentActivityItem {
+  action: string;
+  detail: string;
+  time: string;
+  type: string;
+}
+
+interface Metrics {
+  activeUsers: number;
+  activeUsersChange: number;
+  mrr: number;
+  mrrChange: number;
+  openTickets: number;
+  urgentTickets: number;
+  badgeQueue: number;
+  featuredBadges: number;
+  dogsActive: number;
+  dogsNew: number;
+  sessionsToday: number;
+  avgSessions: number;
+  systemHealth: number;
+  flaggedContent: number;
+  recentActivity: RecentActivityItem[];
+}
+
+// Initial empty metrics
+const emptyMetrics: Metrics = {
+  activeUsers: 0,
+  activeUsersChange: 0,
+  mrr: 0,
+  mrrChange: 0,
+  openTickets: 0,
+  urgentTickets: 0,
+  badgeQueue: 0,
+  featuredBadges: 0,
+  dogsActive: 0,
+  dogsNew: 0,
+  sessionsToday: 0,
+  avgSessions: 0,
+  systemHealth: 99.9,
+  flaggedContent: 0,
+  recentActivity: [],
 };
 
 export default function AdminDashboardPage() {
   const admin = useAdmin();
-  const [metrics, setMetrics] = useState(demoMetrics);
-  const [isLoading, setIsLoading] = useState(false);
+  const { sessionToken } = useAdminStore();
+  const [metrics, setMetrics] = useState(emptyMetrics);
+  const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [error, setError] = useState<string | null>(null);
 
-  // In production, this would fetch real metrics
+  // Fetch real metrics from API
   const refreshMetrics = async () => {
+    if (!sessionToken) return;
+
     setIsLoading(true);
-    // Simulating API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setLastUpdated(new Date());
-    setIsLoading(false);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/admin/metrics', {
+        headers: {
+          'x-admin-session': sessionToken,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch metrics');
+      }
+
+      const data = await response.json();
+      setMetrics(data);
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error('Error fetching metrics:', err);
+      setError('Failed to load metrics');
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  // Fetch metrics on mount and when session changes
+  useEffect(() => {
+    refreshMetrics();
+  }, [sessionToken]);
 
   return (
     <div className="space-y-6">
@@ -250,20 +304,21 @@ export default function AdminDashboardPage() {
             <h3 className="font-medium text-white">Recent Activity</h3>
           </div>
           <div className="divide-y divide-surface-800">
-            {[
-              { action: 'New support ticket', detail: 'User: jane@example.com', time: '2m ago', type: 'ticket' },
-              { action: 'Badge approved', detail: '"Advanced Recall Master"', time: '15m ago', type: 'badge' },
-              { action: 'Failed payment', detail: 'Business Plan - $249', time: '1h ago', type: 'billing' },
-              { action: 'User flagged', detail: 'Reported for spam', time: '2h ago', type: 'moderation' },
-            ].map((item, index) => (
-              <div key={index} className="flex items-center justify-between p-4 hover:bg-surface-800/50 transition-colors">
-                <div>
-                  <p className="text-sm font-medium text-white">{item.action}</p>
-                  <p className="text-xs text-surface-500">{item.detail}</p>
+            {metrics.recentActivity.length > 0 ? (
+              metrics.recentActivity.slice(0, 4).map((item, index) => (
+                <div key={index} className="flex items-center justify-between p-4 hover:bg-surface-800/50 transition-colors">
+                  <div>
+                    <p className="text-sm font-medium text-white">{item.action}</p>
+                    <p className="text-xs text-surface-500">{item.detail}</p>
+                  </div>
+                  <span className="text-xs text-surface-500">{item.time}</span>
                 </div>
-                <span className="text-xs text-surface-500">{item.time}</span>
+              ))
+            ) : (
+              <div className="p-8 text-center text-surface-500">
+                {isLoading ? 'Loading activity...' : 'No recent activity'}
               </div>
-            ))}
+            )}
           </div>
           <div className="p-4 border-t border-surface-800">
             <Link href="/admin/audit" className="text-sm text-brand-400 hover:text-brand-300 flex items-center gap-1">
