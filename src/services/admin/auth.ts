@@ -4,9 +4,12 @@
  */
 
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
-import { authenticator } from 'otplib';
+import { TOTP, generateSecret, generateURI, verify } from 'otplib';
 import bcrypt from 'bcryptjs';
 import { SupabaseClient } from '@supabase/supabase-js';
+
+// Create TOTP instance
+const totp = new TOTP();
 
 // Types
 export type AdminRole = 'super_admin' | 'support' | 'moderator' | 'analytics' | 'billing';
@@ -163,7 +166,7 @@ export async function verifyMfa(
     }
 
     // Verify TOTP code
-    const isValid = authenticator.verify({ token: code, secret: admin.mfa_secret });
+    const isValid = totp.verify({ token: code, secret: admin.mfa_secret });
 
     if (!isValid) {
       // Check backup codes
@@ -222,10 +225,17 @@ export async function setupMfa(adminId: string): Promise<MfaSetupResult> {
     }
 
     // Generate secret
-    const secret = authenticator.generateSecret();
+    const secret = generateSecret();
 
     // Generate QR code URL (otpauth URL for authenticator apps)
-    const otpauthUrl = authenticator.keyuri(admin.email, 'K9 ProTrain Admin', secret);
+    const otpauthUrl = generateURI({
+      issuer: 'K9 ProTrain Admin',
+      label: admin.email,
+      secret,
+      algorithm: 'SHA1',
+      digits: 6,
+      period: 30,
+    });
 
     // Store secret (not yet enabled)
     await supabase.from('admin_users').update({ mfa_secret: secret }).eq('id', adminId);
@@ -265,7 +275,7 @@ export async function completeMfaSetup(
     }
 
     // Verify code
-    const isValid = authenticator.verify({ token: code, secret: admin.mfa_secret });
+    const isValid = totp.verify({ token: code, secret: admin.mfa_secret });
 
     if (!isValid) {
       return { success: false, requiresMfa: false, requiresPasswordChange: false, requiresMfaSetup: true, error: 'Invalid verification code' };
