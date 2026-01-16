@@ -47,12 +47,6 @@ const heroImages = [
   },
 ];
 
-const problemStats = [
-  { label: 'Client check-in calls/texts', time: '45-60 min/day' },
-  { label: 'Writing daily reports', time: '15-20 min per dog' },
-  { label: 'Taking & sending photos', time: '20-30 min/day' },
-  { label: 'Answering progress questions', time: 'Constant' },
-];
 
 const stayTrainFeatures = [
   {
@@ -231,48 +225,110 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* The Problem Section */}
-      <section id="problem" className="py-12 md:py-20 px-4 bg-surface-900/50">
+      {/* ROI Section - Moved Higher */}
+      <section className="py-12 md:py-20 px-4 bg-surface-900/50">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-8 md:mb-16">
-            <h2 className="text-2xl md:text-4xl font-bold text-white mb-2 md:mb-4">
-              The Daily Time Drain
+          <div className="grid lg:grid-cols-2 gap-8 md:gap-12 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-green-500/10 border border-green-500/20 mb-4 md:mb-6">
+                <TrendingUp size={14} className="text-green-400" />
+                <span className="text-xs md:text-sm text-green-400 font-medium">Proven ROI</span>
+              </div>
+              <h2 className="text-2xl md:text-4xl font-bold text-white mb-4 md:mb-6">
+                8x Return on Investment
+              </h2>
+              <p className="text-surface-400 mb-6 md:mb-8 text-sm md:text-base">
+                We&apos;ve done the math because we know your time has a dollar value.
+              </p>
+
+              <div className="space-y-3 md:space-y-4 mb-6 md:mb-8">
+                <div className="flex items-center justify-between p-3 md:p-4 rounded-xl bg-surface-800/50 border border-surface-700">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <Clock size={18} className="text-green-400" />
+                    <span className="text-surface-300 text-sm md:text-base">Time recovered</span>
+                  </div>
+                  <span className="font-semibold text-white text-sm md:text-base">10+ hours/week</span>
+                </div>
+                <div className="flex items-center justify-between p-3 md:p-4 rounded-xl bg-surface-800/50 border border-surface-700">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <DollarSign size={18} className="text-green-400" />
+                    <span className="text-surface-300 text-sm md:text-base">At $50/hour trainer time</span>
+                  </div>
+                  <span className="font-semibold text-white text-sm md:text-base">$2,000+/month</span>
+                </div>
+                <div className="flex items-center justify-between p-3 md:p-4 rounded-xl bg-surface-800/50 border border-surface-700">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <BarChart3 size={18} className="text-brand-400" />
+                    <span className="text-surface-300 text-sm md:text-base">Platform investment</span>
+                  </div>
+                  <span className="font-semibold text-white text-sm md:text-base">$249/month</span>
+                </div>
+              </div>
+
+              <div className="p-4 md:p-6 rounded-xl bg-green-500/10 border border-green-500/20">
+                <div className="flex items-center gap-2 md:gap-3 mb-2">
+                  <TrendingUp size={20} className="text-green-400 md:hidden" />
+                  <TrendingUp size={24} className="text-green-400 hidden md:block" />
+                  <span className="text-xl md:text-2xl font-bold text-white">Net ROI: 8x return</span>
+                </div>
+                <p className="text-surface-400 text-xs md:text-sm">Plus the intangibles: better client retention, more referrals, happier trainers</p>
+              </div>
+            </div>
+
+            <div className="aspect-square rounded-2xl bg-surface-800/50 border border-surface-700 overflow-hidden relative hidden lg:block">
+              <Image
+                src="https://images.unsplash.com/photo-1546815708-410983510897?w=800&q=80"
+                alt="Dog agility training"
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* The Trust Gap Section - Redesigned */}
+      <section id="problem" className="py-12 md:py-20 px-4">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-8 md:mb-12">
+            <h2 className="text-2xl md:text-4xl font-bold text-white mb-3 md:mb-4">
+              The Trust Problem
             </h2>
             <p className="text-surface-400 max-w-2xl mx-auto text-sm md:text-base">
-              Trainers are drowning in admin work that has nothing to do with training dogs.
+              When pet parents drop off their dog for a 2-week board & train, they&apos;re trusting you with a family member.
             </p>
           </div>
 
-          {/* Time Drain Stats - 2 columns on mobile */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-8 md:mb-16">
-            {problemStats.map((stat, index) => (
-              <div
-                key={index}
-                className="p-4 md:p-6 rounded-xl md:rounded-2xl bg-red-500/5 border border-red-500/20"
-              >
-                <Clock size={20} className="text-red-400 mb-2 md:mb-3" />
-                <p className="text-lg md:text-2xl font-bold text-white mb-1">{stat.time}</p>
-                <p className="text-surface-400 text-xs md:text-sm">{stat.label}</p>
+          <div className="grid md:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12">
+            <div className="p-5 md:p-6 rounded-xl md:rounded-2xl bg-red-500/5 border border-red-500/20 text-center">
+              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-3 md:mb-4">
+                <XCircle size={24} className="text-red-400" />
               </div>
-            ))}
-          </div>
-
-          {/* The Trust Gap - Simplified on mobile */}
-          <div className="max-w-4xl mx-auto mb-8 md:mb-16">
-            <div className="p-5 md:p-8 rounded-xl md:rounded-2xl bg-surface-800/50 border border-surface-700">
-              <h3 className="text-lg md:text-xl font-semibold text-white mb-3 md:mb-4 flex items-center gap-2 md:gap-3">
-                <Shield size={20} className="text-amber-400" />
-                The Trust Gap
-              </h3>
-              <p className="text-surface-300 text-sm md:text-base mb-3 md:mb-4">
-                When pet parents drop off their dog, they&apos;re trusting you with a family member. Without visibility, that trust gets tested daily.
-              </p>
-              <div className="flex flex-wrap gap-2 md:gap-3 text-xs md:text-sm">
-                <span className="px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-surface-700 text-surface-300">Silence breeds anxiety</span>
-                <span className="px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-surface-700 text-surface-300">Anxiety breeds calls</span>
+              <h3 className="font-semibold text-white mb-2">Silence Creates Doubt</h3>
+              <p className="text-surface-400 text-sm">Without updates, pet parents imagine the worst. Trust erodes with every silent day.</p>
+            </div>
+            <div className="p-5 md:p-6 rounded-xl md:rounded-2xl bg-amber-500/5 border border-amber-500/20 text-center">
+              <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-3 md:mb-4">
+                <MessageSquare size={24} className="text-amber-400" />
               </div>
+              <h3 className="font-semibold text-white mb-2">Doubt Drives Interruptions</h3>
+              <p className="text-surface-400 text-sm">Anxious owners call. You stop training to reassure them. Everyone loses.</p>
+            </div>
+            <div className="p-5 md:p-6 rounded-xl md:rounded-2xl bg-green-500/5 border border-green-500/20 text-center">
+              <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-3 md:mb-4">
+                <Shield size={24} className="text-green-400" />
+              </div>
+              <h3 className="font-semibold text-white mb-2">Visibility Builds Trust</h3>
+              <p className="text-surface-400 text-sm">K9 ProTrain gives parents a window into their dog&apos;s day. Happy clients don&apos;t call.</p>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Competitor Problems Section */}
+      <section className="py-12 md:py-20 px-4 bg-surface-900/50">
+        <div className="max-w-7xl mx-auto">
 
           {/* Competitor Problems - Hidden on mobile */}
           <div className="hidden md:block mb-16">
@@ -382,64 +438,6 @@ export default function LandingPage() {
                   <p className="text-surface-400 text-sm">{feature.description}</p>
                 </div>
               ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ROI Section */}
-      <section className="py-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-                8x Return on Investment
-              </h2>
-              <p className="text-surface-400 mb-8">
-                We&apos;ve done the math because we know your time has a dollar value.
-              </p>
-
-              <div className="space-y-4 mb-8">
-                <div className="flex items-center justify-between p-4 rounded-xl bg-surface-800/50 border border-surface-700">
-                  <div className="flex items-center gap-3">
-                    <Clock size={20} className="text-green-400" />
-                    <span className="text-surface-300">Time recovered</span>
-                  </div>
-                  <span className="font-semibold text-white">10+ hours/week</span>
-                </div>
-                <div className="flex items-center justify-between p-4 rounded-xl bg-surface-800/50 border border-surface-700">
-                  <div className="flex items-center gap-3">
-                    <DollarSign size={20} className="text-green-400" />
-                    <span className="text-surface-300">At $50/hour trainer time</span>
-                  </div>
-                  <span className="font-semibold text-white">$2,000+/month</span>
-                </div>
-                <div className="flex items-center justify-between p-4 rounded-xl bg-surface-800/50 border border-surface-700">
-                  <div className="flex items-center gap-3">
-                    <BarChart3 size={20} className="text-brand-400" />
-                    <span className="text-surface-300">Platform investment</span>
-                  </div>
-                  <span className="font-semibold text-white">$249/month</span>
-                </div>
-              </div>
-
-              <div className="p-6 rounded-xl bg-green-500/10 border border-green-500/20">
-                <div className="flex items-center gap-3 mb-2">
-                  <TrendingUp size={24} className="text-green-400" />
-                  <span className="text-2xl font-bold text-white">Net ROI: 8x return</span>
-                </div>
-                <p className="text-surface-400 text-sm">Plus the intangibles: better client retention, more referrals, happier trainers</p>
-              </div>
-            </div>
-
-            <div className="aspect-square rounded-2xl bg-surface-800/50 border border-surface-700 overflow-hidden relative">
-              <Image
-                src="https://images.unsplash.com/photo-1546815708-410983510897?w=800&q=80"
-                alt="Dog agility training"
-                fill
-                className="object-cover"
-                unoptimized
-              />
             </div>
           </div>
         </div>
