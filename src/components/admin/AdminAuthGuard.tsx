@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAdminStore, useIsAdminAuthenticated, useAdminLoading } from '@/stores/adminStore';
+import { useAdminStore, useIsAdminAuthenticated, useAdminLoading, useHasHydrated } from '@/stores/adminStore';
 import { Loader2 } from 'lucide-react';
 
 interface AdminAuthGuardProps {
@@ -13,6 +13,7 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
   const router = useRouter();
   const isAuthenticated = useIsAdminAuthenticated();
   const isLoading = useAdminLoading();
+  const hasHydrated = useHasHydrated();
   const { isInitialized, initialize, pendingMfa, pendingMfaSetup, pendingPasswordChange } = useAdminStore();
 
   // Initialize on mount
@@ -48,8 +49,8 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
     }
   }, [isInitialized, isAuthenticated, pendingPasswordChange, router]);
 
-  // Loading state
-  if (!isInitialized || isLoading) {
+  // Loading state - wait for hydration and initialization
+  if (!hasHydrated || !isInitialized || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-950">
         <div className="flex flex-col items-center gap-4">

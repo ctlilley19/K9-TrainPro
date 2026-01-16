@@ -28,6 +28,7 @@ interface AdminAuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   isInitialized: boolean;
+  hasHydrated: boolean;
   error: string | null;
 
   // Auth flow states
@@ -45,6 +46,7 @@ interface AdminAuthState {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setInitialized: (initialized: boolean) => void;
+  setHasHydrated: (hydrated: boolean) => void;
 
   // Auth flow actions
   setPendingMfa: (pending: boolean) => void;
@@ -77,6 +79,7 @@ export const useAdminStore = create<AdminAuthState>()(
       isAuthenticated: false,
       isLoading: false,
       isInitialized: false,
+      hasHydrated: false,
       error: null,
 
       // Auth flow states
@@ -91,6 +94,7 @@ export const useAdminStore = create<AdminAuthState>()(
       setLoading: (loading) => set({ isLoading: loading }),
       setError: (error) => set({ error }),
       setInitialized: (initialized) => set({ isInitialized: initialized }),
+      setHasHydrated: (hydrated) => set({ hasHydrated: hydrated }),
 
       // Auth flow setters
       setPendingMfa: (pending) => set({ pendingMfa: pending }),
@@ -195,8 +199,13 @@ export const useAdminStore = create<AdminAuthState>()(
       name: 'k9-admin-auth',
       partialize: (state) => ({
         sessionToken: state.sessionToken,
-        // Don't persist sensitive data
+        admin: state.admin,
+        isAuthenticated: state.isAuthenticated,
+        // Persist auth state to prevent redirect loops during navigation
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );
@@ -211,6 +220,7 @@ export const usePendingMfa = () => useAdminStore((state) => state.pendingMfa);
 export const usePendingMfaSetup = () => useAdminStore((state) => state.pendingMfaSetup);
 export const usePendingPasswordChange = () => useAdminStore((state) => state.pendingPasswordChange);
 export const useMfaSetupData = () => useAdminStore((state) => state.mfaSetupData);
+export const useHasHydrated = () => useAdminStore((state) => state.hasHydrated);
 
 // Permission check utilities
 export function hasAdminRole(userRole: AdminRole | undefined, requiredRole: AdminRole): boolean {

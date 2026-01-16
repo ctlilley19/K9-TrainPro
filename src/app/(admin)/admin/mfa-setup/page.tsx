@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAdminStore, useMfaSetupData, useAdmin, useIsAdminAuthenticated } from '@/stores/adminStore';
+import { useAdminStore, useMfaSetupData, useAdmin, useIsAdminAuthenticated, useHasHydrated } from '@/stores/adminStore';
 import { Button } from '@/components/ui/Button';
 import { ShieldCheck, Loader2, AlertCircle, Copy, Check } from 'lucide-react';
 import QRCode from 'qrcode';
@@ -12,11 +12,17 @@ export default function MfaSetupPage() {
   const admin = useAdmin();
   const mfaSetupData = useMfaSetupData();
   const isAuthenticated = useIsAdminAuthenticated();
-  const { loginComplete, setError, setLoading, isLoading, error, pendingMfaSetup } = useAdminStore();
+  const hasHydrated = useHasHydrated();
+  const { loginComplete, setError, setLoading, isLoading, error, pendingMfaSetup, isInitialized, initialize } = useAdminStore();
 
   const [code, setCode] = useState('');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Initialize store on mount
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
 
   // Generate QR code on mount
   useEffect(() => {
@@ -32,17 +38,21 @@ export default function MfaSetupPage() {
     }
   }, [mfaSetupData?.qrCodeUrl]);
 
-  // Redirect if not in MFA setup flow (but not if already authenticated)
+  // Redirect logic - only after store is hydrated
   useEffect(() => {
+    // Wait for zustand to hydrate from localStorage
+    if (!hasHydrated) return;
+
     if (isAuthenticated) {
       // Already authenticated, go to admin dashboard
       router.replace('/admin');
       return;
     }
-    if (!pendingMfaSetup || !admin) {
+    // Only redirect to login if we're not in the MFA setup flow
+    if (!pendingMfaSetup && !admin) {
       router.replace('/admin/login');
     }
-  }, [pendingMfaSetup, admin, router, isAuthenticated]);
+  }, [hasHydrated, pendingMfaSetup, admin, router, isAuthenticated]);
 
   const handleCopySecret = () => {
     if (mfaSetupData?.secret) {
@@ -94,7 +104,8 @@ export default function MfaSetupPage() {
     }
   };
 
-  if (!mfaSetupData || !admin) {
+  // Show loader while hydrating or if missing required data
+  if (!hasHydrated || !mfaSetupData || !admin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-red-500" />
