@@ -383,7 +383,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================================================
 
 -- Insert initial super admin (password will be changed on first login)
--- Password is a bcrypt hash of 'changeme123!' - MUST be changed immediately
+-- Password is a bcrypt hash of 'TestAdmin2025!' - MUST be changed after first login
 INSERT INTO admin_users (
   email,
   password_hash,
@@ -393,13 +393,13 @@ INSERT INTO admin_users (
   is_active,
   must_change_password
 ) VALUES (
-  'admin@k9protrain.com',
-  '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X.VxBXl.vE0KCKNO6', -- 'changeme123!'
-  'Super Admin',
+  'ct.lilley19@gmail.com',
+  '$2a$12$rG8N9qJ5KqXm.YzE5UXSP.qE4YBz7GnxH3LKDQ.C5MvW6N1hSjrKu', -- 'TestAdmin2025!'
+  'Clayton Lilley',
   'super_admin',
   false, -- MFA will be required on first login
   true,
-  true -- Must change password on first login
+  false -- Can change password later
 );
 
 -- Log the admin creation

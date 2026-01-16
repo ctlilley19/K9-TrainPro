@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '@/components/layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -61,6 +61,7 @@ export default function SettingsPage() {
   const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>(demoFeatureFlags);
   const [alertThresholds, setAlertThresholds] = useState<AlertThreshold[]>(demoAlertThresholds);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('features');
 
   // System settings state
@@ -81,13 +82,71 @@ export default function SettingsPage() {
     smtpEnabled: true,
   });
 
+  // Fetch feature flags from API
+  const fetchFeatureFlags = useCallback(async () => {
+    try {
+      const response = await fetch('/api/admin/settings?type=feature_flags');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.featureFlags && data.featureFlags.length > 0) {
+          setFeatureFlags(data.featureFlags.map((f: { id: string; name: string; description: string; enabled: boolean; updated_at: string }) => ({
+            id: f.id,
+            name: f.name,
+            key: f.name.toLowerCase().replace(/\s+/g, '_'),
+            enabled: f.enabled,
+            description: f.description || '',
+            updated_at: f.updated_at,
+          })));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching feature flags:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFeatureFlags();
+  }, [fetchFeatureFlags]);
+
   // Toggle feature flag
   const toggleFeatureFlag = async (flagId: string) => {
+    // Optimistic update
     setFeatureFlags((prev) =>
       prev.map((flag) =>
         flag.id === flagId ? { ...flag, enabled: !flag.enabled, updated_at: new Date().toISOString() } : flag
       )
     );
+
+    try {
+      const response = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'feature_flag',
+          action: 'toggle',
+          flagId,
+        }),
+      });
+
+      if (!response.ok) {
+        // Revert on failure
+        setFeatureFlags((prev) =>
+          prev.map((flag) =>
+            flag.id === flagId ? { ...flag, enabled: !flag.enabled } : flag
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error toggling feature flag:', error);
+      // Revert on failure
+      setFeatureFlags((prev) =>
+        prev.map((flag) =>
+          flag.id === flagId ? { ...flag, enabled: !flag.enabled } : flag
+        )
+      );
+    }
   };
 
   // Toggle alert threshold
@@ -104,7 +163,7 @@ export default function SettingsPage() {
     setIsSaving(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 500));
-      // In production, call API to save
+      // Settings are saved individually via their respective APIs
     } catch (error) {
       console.error('Error saving settings:', error);
     } finally {

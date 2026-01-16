@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { AddDogModal } from '@/components/dogs/AddDogModal';
+import { useUpload } from '@/hooks/useUpload';
+import { activitiesService } from '@/services/supabase/activities';
 import {
   DragDropContext,
   Droppable,
@@ -90,6 +92,21 @@ export default function TrainingBoardPage() {
   const startActivity = useStartActivity();
   const endActivity = useEndActivity();
   const quickLog = useQuickLog();
+
+  // Photo upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingForDog, setUploadingForDog] = useState<string | null>(null);
+  const { upload, isUploading } = useUpload({
+    bucket: 'media',
+    onSuccess: (url) => {
+      console.log('Photo uploaded:', url);
+      setUploadingForDog(null);
+    },
+    onError: (error) => {
+      console.error('Upload failed:', error);
+      setUploadingForDog(null);
+    },
+  });
 
   // Build dynamic column configuration from activity configs
   const columnConfig = useMemo(() => {
@@ -313,24 +330,62 @@ export default function TrainingBoardPage() {
   );
 
   const handleAddPhoto = useCallback((dogId: string) => {
-    // TODO: Open file picker and upload photo
-    console.log('Add photo for dog:', dogId);
+    setUploadingForDog(dogId);
+    fileInputRef.current?.click();
   }, []);
+
+  const handleFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file || !uploadingForDog) return;
+
+      // Find the dog's current activity to associate the photo
+      const dog = Object.values(columns)
+        .flat()
+        .find((d) => d.id === uploadingForDog);
+
+      if (dog?.activityId) {
+        await upload(file, { folder: `activities/${dog.activityId}` });
+      } else {
+        await upload(file, { folder: `dogs/${uploadingForDog}` });
+      }
+
+      // Clear the input for next upload
+      e.target.value = '';
+    },
+    [uploadingForDog, columns, upload]
+  );
 
   const handleAddNote = useCallback(
     async (dogId: string, note: string) => {
+      // Find the dog's current activity
+      const dog = Object.values(columns)
+        .flat()
+        .find((d) => d.id === dogId);
+
+      // Optimistic update
       setColumns((prev) => {
         const newColumns = { ...prev };
         for (const column of Object.keys(newColumns)) {
-          newColumns[column] = newColumns[column].map((dog) =>
-            dog.id === dogId ? { ...dog, notes: note } : dog
+          newColumns[column] = newColumns[column].map((d) =>
+            d.id === dogId ? { ...d, notes: note } : d
           );
         }
         return newColumns;
       });
-      // TODO: Update activity notes via API
+
+      // Update via API if we have an activity ID
+      if (dog?.activityId && !isDemoMode()) {
+        try {
+          await activitiesService.updateNotes(dog.activityId, note);
+        } catch (err) {
+          console.error('Failed to update notes:', err);
+          // Revert on error
+          refetch();
+        }
+      }
     },
-    []
+    [columns, refetch]
   );
 
   const handleEndActivity = useCallback(
@@ -413,6 +468,15 @@ export default function TrainingBoardPage() {
 
   return (
     <div className="h-[calc(100vh-8rem)]">
+      {/* Hidden file input for photo uploads */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
       <PageHeader
         title="Training Board"
         description="Drag dogs between columns to log activities"

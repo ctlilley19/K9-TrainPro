@@ -232,6 +232,7 @@ export function canAccessModule(role: AdminRole | undefined, module: string): bo
     system: ['super_admin'],
     audit: ['super_admin'],
     settings: ['super_admin'],
+    testing: ['super_admin'],
   };
 
   const allowedRoles = modulePermissions[module];

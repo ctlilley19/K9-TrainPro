@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
+  TestTube2,
 } from 'lucide-react';
 
 interface NavItem {
@@ -40,6 +41,7 @@ const navItems: NavItem[] = [
   { label: 'System', href: '/admin/system', icon: <Server size={20} />, module: 'system' },
   { label: 'Audit Log', href: '/admin/audit', icon: <ScrollText size={20} />, module: 'audit' },
   { label: 'Settings', href: '/admin/settings', icon: <Settings size={20} />, module: 'settings' },
+  { label: 'Testing', href: '/admin/testing', icon: <TestTube2 size={20} />, module: 'testing' },
 ];
 
 const roleLabels: Record<AdminRole, string> = {
