@@ -1,12 +1,6 @@
 'use server';
 
-import { createClient } from '@supabase/supabase-js';
-
-// Create Supabase admin client for server-side operations
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
 // Audit event categories
 export type AuditCategory =
@@ -107,7 +101,7 @@ interface CreateAuditLogInput {
 // Create an audit log entry
 export async function createAuditLog(input: CreateAuditLogInput): Promise<AuditLogEntry | null> {
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from('audit_log')
       .insert({
         admin_id: input.adminId,
@@ -408,7 +402,7 @@ interface AuditLogResult {
 
 export async function queryAuditLogs(query: AuditLogQuery): Promise<AuditLogResult> {
   try {
-    let queryBuilder = supabaseAdmin
+    let queryBuilder = getSupabaseAdmin()
       .from('audit_log')
       .select('*', { count: 'exact' });
 
@@ -477,13 +471,13 @@ export async function getAuditStats(days: number = 7): Promise<AuditStats> {
 
   try {
     // Get total count
-    const { count: totalLogs } = await supabaseAdmin
+    const { count: totalLogs } = await getSupabaseAdmin()
       .from('audit_log')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', startDate.toISOString());
 
     // Get counts by category
-    const { data: categoryData } = await supabaseAdmin
+    const { data: categoryData } = await getSupabaseAdmin()
       .from('audit_log')
       .select('category')
       .gte('created_at', startDate.toISOString());
@@ -494,7 +488,7 @@ export async function getAuditStats(days: number = 7): Promise<AuditStats> {
     }, {} as Record<AuditCategory, number>);
 
     // Get counts by severity
-    const { data: severityData } = await supabaseAdmin
+    const { data: severityData } = await getSupabaseAdmin()
       .from('audit_log')
       .select('severity')
       .gte('created_at', startDate.toISOString());
@@ -505,7 +499,7 @@ export async function getAuditStats(days: number = 7): Promise<AuditStats> {
     }, {} as Record<AuditSeverity, number>);
 
     // Get recent critical events
-    const { count: recentCritical } = await supabaseAdmin
+    const { count: recentCritical } = await getSupabaseAdmin()
       .from('audit_log')
       .select('*', { count: 'exact', head: true })
       .eq('severity', 'critical')

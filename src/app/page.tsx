@@ -152,24 +152,25 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-surface-950/80 backdrop-blur-xl border-b border-surface-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center shadow-glow-amber">
-                <Dog size={24} className="text-white" />
+          <div className="flex items-center justify-between h-14 md:h-16">
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-brand-500 flex items-center justify-center shadow-glow-amber">
+                <Dog size={20} className="text-white md:hidden" />
+                <Dog size={24} className="text-white hidden md:block" />
               </div>
-              <span className="text-xl font-bold text-gradient">K9 ProTrain</span>
+              <span className="text-lg md:text-xl font-bold text-gradient">K9 ProTrain</span>
             </div>
             <div className="hidden md:flex items-center gap-6 text-sm">
               <a href="#problem" className="text-surface-400 hover:text-white transition-colors">The Problem</a>
               <a href="#features" className="text-surface-400 hover:text-white transition-colors">Features</a>
               <a href="#pricing" className="text-surface-400 hover:text-white transition-colors">Pricing</a>
             </div>
-            <div className="flex items-center gap-4">
-              <Link href="/login">
-                <Button variant="ghost">Sign In</Button>
+            <div className="flex items-center gap-2 md:gap-4">
+              <Link href="/login" className="hidden sm:block">
+                <Button variant="ghost" size="sm">Sign In</Button>
               </Link>
               <Link href="/register">
-                <Button variant="glow">Get Started</Button>
+                <Button variant="glow" size="sm" className="text-sm px-3 md:px-4">Get Started</Button>
               </Link>
             </div>
           </div>
@@ -177,43 +178,44 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4">
+      <section className="pt-20 md:pt-32 pb-12 md:pb-20 px-4">
         <div className="max-w-7xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/20 mb-8">
-            <Star size={16} className="text-brand-400" />
-            <span className="text-sm text-brand-400 font-medium">
-              Purpose-Built for Professional Dog Trainers
+          <div className="inline-flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-brand-500/10 border border-brand-500/20 mb-4 md:mb-8">
+            <Star size={14} className="text-brand-400" />
+            <span className="text-xs md:text-sm text-brand-400 font-medium">
+              Built for Professional Dog Trainers
             </span>
           </div>
 
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-            Stop Drowning in <br />
+          <h1 className="text-3xl md:text-6xl lg:text-7xl font-bold text-white mb-4 md:mb-6 leading-tight">
+            Stop Drowning in <br className="hidden md:block" />
             <span className="text-gradient">Admin Work</span>
           </h1>
 
-          <p className="text-lg md:text-xl text-surface-400 max-w-3xl mx-auto mb-6">
-            The average board & train facility spends <span className="text-white font-semibold">10-15 hours per week</span> on client communication alone. That&apos;s a part-time employee&apos;s worth of hours that could be spent on training dogs.
+          <p className="text-base md:text-xl text-surface-400 max-w-3xl mx-auto mb-4 md:mb-6 px-2">
+            <span className="hidden md:inline">The average board & train facility spends </span>
+            <span className="text-white font-semibold">10-15 hours per week</span> on client communication<span className="hidden md:inline"> alone. That&apos;s a part-time employee&apos;s worth of hours that could be spent on training dogs</span>.
           </p>
 
-          <p className="text-lg text-surface-300 max-w-2xl mx-auto mb-10">
+          <p className="text-sm md:text-lg text-surface-300 max-w-2xl mx-auto mb-6 md:mb-10 hidden md:block">
             K9 ProTrain automates the busy work so you can focus on your mission.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/register">
-              <Button variant="glow" size="lg" rightIcon={<ArrowRight size={18} />}>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4">
+            <Link href="/register" className="w-full sm:w-auto">
+              <Button variant="glow" size="lg" rightIcon={<ArrowRight size={18} />} className="w-full sm:w-auto">
                 Start Free Trial
               </Button>
             </Link>
-            <Link href="/demo">
-              <Button variant="outline" size="lg">
+            <Link href="/demo" className="w-full sm:w-auto">
+              <Button variant="outline" size="lg" className="w-full sm:w-auto">
                 View Demo
               </Button>
             </Link>
           </div>
 
-          {/* Hero Image */}
-          <div className="mt-16 relative">
+          {/* Hero Image - Hidden on mobile */}
+          <div className="mt-8 md:mt-16 relative hidden md:block">
             <div className="absolute inset-0 bg-gradient-to-t from-surface-950 via-transparent to-transparent z-10" />
             <div className="aspect-video max-w-5xl mx-auto rounded-2xl bg-surface-800/50 border border-surface-700 overflow-hidden relative">
               <Image
@@ -230,51 +232,50 @@ export default function LandingPage() {
       </section>
 
       {/* The Problem Section */}
-      <section id="problem" className="py-20 px-4 bg-surface-900/50">
+      <section id="problem" className="py-12 md:py-20 px-4 bg-surface-900/50">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+          <div className="text-center mb-8 md:mb-16">
+            <h2 className="text-2xl md:text-4xl font-bold text-white mb-2 md:mb-4">
               The Daily Time Drain
             </h2>
-            <p className="text-surface-400 max-w-2xl mx-auto">
-              Professional dog trainers are drowning in admin work that has nothing to do with training dogs.
+            <p className="text-surface-400 max-w-2xl mx-auto text-sm md:text-base">
+              Trainers are drowning in admin work that has nothing to do with training dogs.
             </p>
           </div>
 
-          {/* Time Drain Stats */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
+          {/* Time Drain Stats - 2 columns on mobile */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-8 md:mb-16">
             {problemStats.map((stat, index) => (
               <div
                 key={index}
-                className="p-6 rounded-2xl bg-red-500/5 border border-red-500/20"
+                className="p-4 md:p-6 rounded-xl md:rounded-2xl bg-red-500/5 border border-red-500/20"
               >
-                <Clock size={24} className="text-red-400 mb-3" />
-                <p className="text-2xl font-bold text-white mb-1">{stat.time}</p>
-                <p className="text-surface-400 text-sm">{stat.label}</p>
+                <Clock size={20} className="text-red-400 mb-2 md:mb-3" />
+                <p className="text-lg md:text-2xl font-bold text-white mb-1">{stat.time}</p>
+                <p className="text-surface-400 text-xs md:text-sm">{stat.label}</p>
               </div>
             ))}
           </div>
 
-          {/* The Trust Gap */}
-          <div className="max-w-4xl mx-auto mb-16">
-            <div className="p-8 rounded-2xl bg-surface-800/50 border border-surface-700">
-              <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-3">
-                <Shield size={24} className="text-amber-400" />
+          {/* The Trust Gap - Simplified on mobile */}
+          <div className="max-w-4xl mx-auto mb-8 md:mb-16">
+            <div className="p-5 md:p-8 rounded-xl md:rounded-2xl bg-surface-800/50 border border-surface-700">
+              <h3 className="text-lg md:text-xl font-semibold text-white mb-3 md:mb-4 flex items-center gap-2 md:gap-3">
+                <Shield size={20} className="text-amber-400" />
                 The Trust Gap
               </h3>
-              <p className="text-surface-300 mb-4">
-                When a pet parent drops off their dog for a 2-week board & train, they&apos;re trusting you with a family member. Without visibility into what&apos;s happening, that trust gets tested every single day.
+              <p className="text-surface-300 text-sm md:text-base mb-3 md:mb-4">
+                When pet parents drop off their dog, they&apos;re trusting you with a family member. Without visibility, that trust gets tested daily.
               </p>
-              <div className="flex flex-wrap gap-3 text-sm">
-                <span className="px-3 py-1.5 rounded-full bg-surface-700 text-surface-300">Silence breeds anxiety</span>
-                <span className="px-3 py-1.5 rounded-full bg-surface-700 text-surface-300">Anxiety breeds phone calls</span>
-                <span className="px-3 py-1.5 rounded-full bg-surface-700 text-surface-300">Phone calls interrupt training</span>
+              <div className="flex flex-wrap gap-2 md:gap-3 text-xs md:text-sm">
+                <span className="px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-surface-700 text-surface-300">Silence breeds anxiety</span>
+                <span className="px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-surface-700 text-surface-300">Anxiety breeds calls</span>
               </div>
             </div>
           </div>
 
-          {/* Competitor Problems */}
-          <div className="mb-16">
+          {/* Competitor Problems - Hidden on mobile */}
+          <div className="hidden md:block mb-16">
             <h3 className="text-xl font-semibold text-white mb-6 text-center">Current Tools Weren&apos;t Built for Trainers</h3>
             <div className="grid md:grid-cols-2 gap-4">
               {competitorProblems.map((item, index) => (
@@ -294,8 +295,8 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Hidden Costs */}
-          <div className="max-w-3xl mx-auto">
+          {/* Hidden Costs - Hidden on mobile */}
+          <div className="max-w-3xl mx-auto hidden md:block">
             <h3 className="text-xl font-semibold text-white mb-6 text-center">The Hidden Costs</h3>
             <div className="space-y-3">
               {hiddenCosts.map((cost, index) => (

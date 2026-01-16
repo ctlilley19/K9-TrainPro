@@ -1,10 +1,24 @@
 import Stripe from 'stripe';
 
-// Server-side Stripe client
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
-  typescript: true,
-});
+// Lazy singleton for Stripe client
+let stripeClient: Stripe | null = null;
+
+export function getStripe(): Stripe {
+  if (!stripeClient) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) {
+      throw new Error('STRIPE_SECRET_KEY not configured');
+    }
+    stripeClient = new Stripe(key, {
+      apiVersion: '2024-12-18.acacia',
+      typescript: true,
+    });
+  }
+  return stripeClient;
+}
+
+// Legacy export for backwards compatibility
+export const stripe = { get: getStripe };
 
 // Subscription tier pricing configuration
 export const SUBSCRIPTION_TIERS = {

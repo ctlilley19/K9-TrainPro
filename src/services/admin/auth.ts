@@ -3,9 +3,10 @@
  * Handles admin login, MFA, and session management
  */
 
-import { createClient } from '@supabase/supabase-js';
-import { TOTP, generateSecret, generateURI, verify } from 'otplib';
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { TOTP, generateSecret, generateURI } from 'otplib';
 import bcrypt from 'bcryptjs';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 // Configure TOTP
 const totp = new TOTP();
@@ -55,18 +56,6 @@ const SESSION_DURATION_MINUTES = 30;
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MINUTES = 15;
 
-// Create admin Supabase client (uses service role)
-function getAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Supabase configuration missing');
-  }
-
-  return createClient(supabaseUrl, supabaseServiceKey);
-}
-
 /**
  * Authenticate admin with email and password
  */
@@ -76,7 +65,7 @@ export async function adminLogin(
   ipAddress?: string,
   userAgent?: string
 ): Promise<LoginResult> {
-  const supabase = getAdminClient();
+  const supabase = getSupabaseAdmin();
 
   try {
     // Find admin by email
@@ -162,7 +151,7 @@ export async function verifyMfa(
   ipAddress?: string,
   userAgent?: string
 ): Promise<LoginResult> {
-  const supabase = getAdminClient();
+  const supabase = getSupabaseAdmin();
 
   try {
     // Get admin with MFA secret
@@ -221,7 +210,7 @@ export async function verifyMfa(
  * Set up MFA for admin
  */
 export async function setupMfa(adminId: string): Promise<MfaSetupResult> {
-  const supabase = getAdminClient();
+  const supabase = getSupabaseAdmin();
 
   try {
     // Get admin
@@ -271,7 +260,7 @@ export async function completeMfaSetup(
   ipAddress?: string,
   userAgent?: string
 ): Promise<LoginResult> {
-  const supabase = getAdminClient();
+  const supabase = getSupabaseAdmin();
 
   try {
     // Get admin with secret
@@ -333,7 +322,7 @@ export async function changePassword(
   ipAddress?: string,
   userAgent?: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = getAdminClient();
+  const supabase = getSupabaseAdmin();
 
   try {
     // Get admin
@@ -382,7 +371,7 @@ export interface ValidatedSession {
  * Validate session token
  */
 export async function validateSession(sessionToken: string): Promise<AdminUser | null> {
-  const supabase = getAdminClient();
+  const supabase = getSupabaseAdmin();
 
   try {
     // Find session
@@ -419,7 +408,7 @@ export async function validateSession(sessionToken: string): Promise<AdminUser |
  * Validate session and return full session info
  */
 export async function validateAdminSession(sessionToken: string): Promise<ValidatedSession | null> {
-  const supabase = getAdminClient();
+  const supabase = getSupabaseAdmin();
 
   try {
     // Find session
@@ -465,7 +454,7 @@ export async function adminLogout(
   ipAddress?: string,
   userAgent?: string
 ): Promise<void> {
-  const supabase = getAdminClient();
+  const supabase = getSupabaseAdmin();
 
   try {
     // Get session to log the admin
@@ -490,7 +479,7 @@ export async function adminLogout(
  * Get admin by ID
  */
 export async function getAdminById(adminId: string): Promise<AdminUser | null> {
-  const supabase = getAdminClient();
+  const supabase = getSupabaseAdmin();
 
   try {
     const { data, error } = await supabase
@@ -513,7 +502,7 @@ export async function getAdminById(adminId: string): Promise<AdminUser | null> {
 // Helper functions
 
 async function createAdminSession(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   adminId: string,
   ipAddress?: string,
   userAgent?: string
@@ -547,7 +536,7 @@ function generateSessionToken(): string {
 }
 
 async function logAuthEvent(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   adminId: string | null,
   action: string,
   reason: string,

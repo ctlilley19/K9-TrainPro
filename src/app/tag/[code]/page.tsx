@@ -1,12 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { TagRouter } from '@/components/tags/TagRouter';
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 interface Props {
   params: Promise<{ code: string }>;
@@ -15,7 +10,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { code } = await params;
 
-  const { data: tag } = await supabaseAdmin
+  const { data: tag } = await getSupabaseAdmin()
     .from('tags')
     .select(`
       *,
@@ -51,7 +46,7 @@ export default async function TagPage({ params }: Props) {
   const { code } = await params;
 
   // Fetch tag with related data
-  const { data: tag, error } = await supabaseAdmin
+  const { data: tag, error } = await getSupabaseAdmin()
     .from('tags')
     .select(`
       *,
@@ -95,7 +90,7 @@ export default async function TagPage({ params }: Props) {
   }
 
   // Log the scan (server-side)
-  await supabaseAdmin.from('tag_scans').insert({
+  await getSupabaseAdmin().from('tag_scans').insert({
     tag_id: tag.id,
     is_authenticated: false, // Will be updated client-side if user is logged in
     action_taken: 'page_view',

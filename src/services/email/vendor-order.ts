@@ -1,9 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 interface TagOrder {
   id: string;
@@ -174,7 +170,7 @@ orders@k9protrain.com
 export async function sendVendorOrderEmail(orderId: string): Promise<{ success: boolean; error?: string }> {
   try {
     // Get order with tags
-    const { data: order, error: orderError } = await supabaseAdmin
+    const { data: order, error: orderError } = await getSupabaseAdmin()
       .from('tag_orders')
       .select(`
         *,
@@ -188,7 +184,7 @@ export async function sendVendorOrderEmail(orderId: string): Promise<{ success: 
     }
 
     // Get tags for this order
-    const { data: tags, error: tagsError } = await supabaseAdmin
+    const { data: tags, error: tagsError } = await getSupabaseAdmin()
       .from('tags')
       .select('tag_code, url')
       .eq('order_id', orderId)
@@ -226,7 +222,7 @@ export async function sendVendorOrderEmail(orderId: string): Promise<{ success: 
     // });
 
     // Update order status
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('tag_orders')
       .update({
         status: 'sent_to_vendor',
@@ -250,7 +246,7 @@ export async function sendOrderConfirmationEmail(
   customerName: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { data: order, error } = await supabaseAdmin
+    const { data: order, error } = await getSupabaseAdmin()
       .from('tag_orders')
       .select('*')
       .eq('id', orderId)
@@ -317,7 +313,7 @@ export async function sendShippedNotificationEmail(
   carrier: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { data: order, error } = await supabaseAdmin
+    const { data: order, error } = await getSupabaseAdmin()
       .from('tag_orders')
       .select('order_number')
       .eq('id', orderId)

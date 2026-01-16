@@ -2,13 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { stripe, SUBSCRIPTION_TIERS } from '@/lib/stripe';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { sendVendorOrderEmail, sendOrderConfirmationEmail } from '@/services/email/vendor-order';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -63,7 +59,7 @@ export async function POST(request: NextRequest) {
 
   // Log the event
   try {
-    await supabaseAdmin.from('stripe_events').insert({
+    await getSupabaseAdmin().from('stripe_events').insert({
       stripe_event_id: event.id,
       event_type: event.type,
       api_version: event.api_version,
@@ -244,13 +240,13 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription, event
 
   // Find facility by customer ID if not in metadata
   const query = facilityId
-    ? supabaseAdmin.from('facilities').update(updateData).eq('id', facilityId)
-    : supabaseAdmin.from('facilities').update(updateData).eq('stripe_customer_id', subscription.customer as string);
+    ? getSupabaseAdmin().from('facilities').update(updateData).eq('id', facilityId)
+    : getSupabaseAdmin().from('facilities').update(updateData).eq('stripe_customer_id', subscription.customer as string);
 
   await query;
 
   // Create/update subscription record
-  await supabaseAdmin.from('subscriptions').upsert({
+  await getSupabaseAdmin().from('subscriptions').upsert({
     stripe_subscription_id: subscription.id,
     stripe_customer_id: subscription.customer as string,
     stripe_price_id: priceId,
@@ -267,7 +263,7 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription, event
   });
 
   // Log subscription event
-  await supabaseAdmin.from('subscription_events').insert({
+  await getSupabaseAdmin().from('subscription_events').insert({
     facility_id: facilityId,
     event_type: eventType.replace('customer.subscription.', ''),
     new_tier: tier,
@@ -309,7 +305,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
   if (!facility) return;
 
   // Record the invoice
-  await supabaseAdmin.from('invoices').upsert({
+  await getSupabaseAdmin().from('invoices').upsert({
     stripe_invoice_id: invoice.id,
     facility_id: facility.id,
     stripe_payment_intent_id: invoice.payment_intent as string,
@@ -340,7 +336,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
       ? await stripe.charges.retrieve(paymentIntent.latest_charge as string)
       : null;
 
-    await supabaseAdmin.from('payments').upsert({
+    await getSupabaseAdmin().from('payments').upsert({
       stripe_payment_intent_id: paymentIntent.id,
       facility_id: facility.id,
       stripe_charge_id: charge?.id,

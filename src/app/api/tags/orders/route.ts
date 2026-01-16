@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { stripe } from '@/lib/stripe';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // GET /api/tags/orders - List orders for a facility
 export async function GET(request: NextRequest) {
@@ -138,7 +134,7 @@ export async function POST(request: NextRequest) {
     const profitMargin = subtotal - (chargeableQuantity * vendorUnitCost);
 
     // Generate order number
-    const { data: orderNum } = await supabaseAdmin.rpc('generate_tag_order_number');
+    const { data: orderNum } = await getSupabaseAdmin().rpc('generate_tag_order_number');
     const orderNumber = orderNum || `ORD-${Date.now()}`;
 
     // Create order
@@ -178,7 +174,7 @@ export async function POST(request: NextRequest) {
     // Generate tag codes for this order
     const tagCodes: string[] = [];
     for (let i = 0; i < quantity; i++) {
-      const { data: tagCode } = await supabaseAdmin.rpc('generate_unique_tag_code');
+      const { data: tagCode } = await getSupabaseAdmin().rpc('generate_unique_tag_code');
       tagCodes.push(tagCode);
     }
 

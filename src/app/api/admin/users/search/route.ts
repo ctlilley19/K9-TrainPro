@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { validateAdminSession } from '@/services/admin/auth';
 import { logUserEvent } from '@/services/admin/audit';
 
-// Create Supabase admin client
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // POST /api/admin/users/search - Search users with audit logging
 export async function POST(request: NextRequest) {
@@ -56,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     // Search for users by email (using Supabase auth admin API)
     // In production, this would query your users table
-    const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers({
+    const { data: authUsers, error: authError } = await getSupabaseAdmin().auth.admin.listUsers({
       perPage: 10,
     });
 
@@ -121,7 +116,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user from Supabase auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    const { data: authData, error: authError } = await getSupabaseAdmin().auth.admin.getUserById(userId);
 
     if (authError || !authData.user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });

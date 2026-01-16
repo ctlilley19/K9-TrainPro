@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { validateAdminSession } from '@/services/admin/auth';
 
-// Create Supabase admin client
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // GET /api/admin/analytics - Get analytics data
 export async function GET(request: NextRequest) {
@@ -102,7 +97,7 @@ async function getUserMetrics(startDate: Date) {
       .gte('created_at', startDate.toISOString());
 
     // Get active users (logged in during range)
-    const { data: activeData } = await supabaseAdmin.auth.admin.listUsers({
+    const { data: activeData } = await getSupabaseAdmin().auth.admin.listUsers({
       perPage: 1000,
     });
 
