@@ -287,7 +287,7 @@ CREATE POLICY "Custom activity types are manageable by facility trainers"
     facility_id IN (
       SELECT facility_id FROM users
       WHERE id = auth.uid()
-      AND role IN ('owner', 'manager', 'trainer')
+      AND role IN ('owner', 'admin', 'trainer')
     )
   );
 
@@ -306,7 +306,7 @@ CREATE POLICY "Activity type overrides are manageable by facility managers"
     facility_id IN (
       SELECT facility_id FROM users
       WHERE id = auth.uid()
-      AND role IN ('owner', 'manager')
+      AND role IN ('owner', 'admin')
     )
   );
 
