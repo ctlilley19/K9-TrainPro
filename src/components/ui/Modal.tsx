@@ -149,7 +149,35 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(
 Modal.displayName = 'Modal';
 
 // Modal subcomponents for custom layouts
-export function ModalHeader({ children, className }: { children: ReactNode; className?: string }) {
+interface ModalHeaderProps {
+  children?: ReactNode;
+  className?: string;
+  title?: string;
+  onClose?: () => void;
+}
+
+export function ModalHeader({ children, className, title, onClose }: ModalHeaderProps) {
+  // If title/onClose are provided, render structured header
+  if (title || onClose) {
+    return (
+      <div className={cn('p-4 border-b border-surface-700', className)}>
+        <div className="flex items-center justify-between">
+          {title && <h2 className="text-lg font-semibold text-white">{title}</h2>}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg text-surface-400 hover:text-white hover:bg-surface-700 transition-colors"
+            >
+              <X size={20} />
+            </button>
+          )}
+        </div>
+        {children}
+      </div>
+    );
+  }
+
+  // Otherwise, render children directly
   return (
     <div className={cn('p-4 border-b border-surface-700', className)}>
       {children}

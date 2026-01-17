@@ -33,6 +33,8 @@ export async function POST(request: NextRequest) {
       ? tierConfig.stripePriceIdAnnual
       : tierConfig.stripePriceIdMonthly;
 
+    const supabaseAdmin = getSupabaseAdmin();
+
     // For free tier, just update the facility
     if (tierConfig.monthlyPrice === 0) {
       await supabaseAdmin

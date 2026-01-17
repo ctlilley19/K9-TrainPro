@@ -15,6 +15,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
+
     // Get facility
     const { data: facility, error: facilityError } = await supabaseAdmin
       .from('facilities')

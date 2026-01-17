@@ -116,11 +116,9 @@ export async function POST(request: NextRequest) {
         // Log the change
         await logSystemEvent(
           session.admin.id,
-          'feature_flag_toggle',
-          flagId,
+          'feature_flag_toggled',
           `Toggled feature flag "${currentFlag.name}" to ${!currentFlag.is_enabled ? 'enabled' : 'disabled'}`,
-          'feature_management',
-          { ipAddress, userAgent }
+          { targetType: 'feature_flag', targetId: flagId, ipAddress, userAgent }
         );
 
         return NextResponse.json({ flag: updatedFlag });
@@ -153,11 +151,9 @@ export async function POST(request: NextRequest) {
 
         await logSystemEvent(
           session.admin.id,
-          'feature_flag_create',
-          newFlag.id,
+          'feature_flag_toggled',
           `Created feature flag "${name}"`,
-          'feature_management',
-          { ipAddress, userAgent }
+          { targetType: 'feature_flag', targetId: newFlag.id, ipAddress, userAgent }
         );
 
         return NextResponse.json({ flag: newFlag });
@@ -190,11 +186,9 @@ export async function POST(request: NextRequest) {
 
         await logSystemEvent(
           session.admin.id,
-          'feature_flag_update',
-          flagId,
+          'feature_flag_toggled',
           `Updated feature flag "${updatedFlag.name}"`,
-          'feature_management',
-          { ipAddress, userAgent }
+          { targetType: 'feature_flag', targetId: flagId, ipAddress, userAgent }
         );
 
         return NextResponse.json({ flag: updatedFlag });
@@ -219,11 +213,9 @@ export async function POST(request: NextRequest) {
 
         await logSystemEvent(
           session.admin.id,
-          'feature_flag_delete',
-          flagId,
+          'feature_flag_toggled',
           `Deleted feature flag "${deletedFlag.name}"`,
-          'feature_management',
-          { ipAddress, userAgent }
+          { targetType: 'feature_flag', targetId: flagId, ipAddress, userAgent }
         );
 
         return NextResponse.json({ success: true });
@@ -260,11 +252,9 @@ export async function POST(request: NextRequest) {
 
         await logSystemEvent(
           session.admin.id,
-          'feature_flags_seeded',
-          null,
+          'system_config_changed',
           'Seeded default feature flags',
-          'feature_management',
-          { ipAddress, userAgent }
+          { targetType: 'feature_flags', ipAddress, userAgent }
         );
 
         return NextResponse.json({ flags: seededFlags });

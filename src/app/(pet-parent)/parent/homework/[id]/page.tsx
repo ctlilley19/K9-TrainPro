@@ -100,7 +100,6 @@ export default function PetParentHomeworkDetailPage() {
         assignment_id: assignmentId,
         notes: notes || undefined,
         video_url: videoUrl || undefined,
-        status: 'submitted',
       });
       setNotes('');
       setVideoUrl('');
@@ -225,7 +224,7 @@ export default function PetParentHomeworkDetailPage() {
 
       {/* Instructions */}
       <Card>
-        <CardHeader title="Instructions" icon={<FileText className="text-brand-400" />} />
+        <CardHeader title={<span className="flex items-center gap-2"><FileText className="text-brand-400" size={18} />Instructions</span>} />
         <CardContent>
           <div className="space-y-4">
             {assignment.description && (
@@ -255,7 +254,7 @@ export default function PetParentHomeworkDetailPage() {
       {/* Demo Video */}
       {assignment.video_url && (
         <Card>
-          <CardHeader title="Demo Video" icon={<Video className="text-blue-400" />} />
+          <CardHeader title={<span className="flex items-center gap-2"><Video className="text-blue-400" size={18} />Demo Video</span>} />
           <CardContent>
             <a
               href={assignment.video_url}
@@ -354,17 +353,7 @@ export default function PetParentHomeworkDetailPage() {
           {/* Submissions List */}
           {assignment.submissions && assignment.submissions.length > 0 ? (
             <div className="space-y-4">
-              {assignment.submissions.map((submission: {
-                id: string;
-                status: string;
-                notes?: string;
-                video_url?: string;
-                photo_urls?: string[];
-                trainer_feedback?: string;
-                rating?: number;
-                created_at: string;
-                reviewed_at?: string;
-              }) => {
+              {assignment.submissions.map((submission) => {
                 const subConfig = submissionStatusConfig[submission.status as keyof typeof submissionStatusConfig];
                 return (
                   <div

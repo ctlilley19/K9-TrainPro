@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/layout';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
-import { Modal, ModalHeader, ModalContent, ModalFooter } from '@/components/ui/Modal';
+import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
 import {
@@ -35,6 +35,7 @@ import {
   Trash2,
   Edit2,
   Image,
+  X,
 } from 'lucide-react';
 
 const statusConfig = {
@@ -161,12 +162,10 @@ export default function HomeworkDetailPage() {
       <PageHeader
         title={assignment.title}
         description={`Assigned to ${assignment.dog?.name || 'Unknown'}`}
-        breadcrumb={
-          <Link href="/homework" className="flex items-center gap-2 text-surface-400 hover:text-white">
-            <ArrowLeft size={16} />
-            Back to Homework
-          </Link>
-        }
+        breadcrumbs={[
+          { label: 'Homework', href: '/homework' },
+          { label: assignment.title }
+        ]}
         action={
           <div className="flex gap-2">
             {assignment.status !== 'completed' && (
@@ -195,7 +194,7 @@ export default function HomeworkDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Assignment Details */}
           <Card>
-            <CardHeader title="Assignment Details" icon={<FileText className="text-brand-400" />} />
+            <CardHeader title={<span className="flex items-center gap-2"><FileText className="text-brand-400" size={18} />Assignment Details</span>} />
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
@@ -267,8 +266,7 @@ export default function HomeworkDetailPage() {
           {/* Submissions */}
           <Card>
             <CardHeader
-              title="Submissions"
-              icon={<MessageSquare className="text-purple-400" />}
+              title={<span className="flex items-center gap-2"><MessageSquare className="text-purple-400" size={18} />Submissions</span>}
             />
             <CardContent>
               {submissions && submissions.length > 0 ? (
@@ -387,7 +385,7 @@ export default function HomeworkDetailPage() {
         <div className="space-y-6">
           {/* Dog Info */}
           <Card>
-            <CardHeader title="Dog" icon={<Dog className="text-brand-400" />} />
+            <CardHeader title={<span className="flex items-center gap-2"><Dog className="text-brand-400" size={18} />Dog</span>} />
             <CardContent>
               <div className="flex items-center gap-3">
                 <Avatar name={assignment.dog?.name || ''} size="lg" />
@@ -438,8 +436,18 @@ export default function HomeworkDetailPage() {
 
       {/* Review Modal */}
       <Modal isOpen={reviewModalOpen} onClose={() => setReviewModalOpen(false)}>
-        <ModalHeader title="Review Submission" onClose={() => setReviewModalOpen(false)} />
-        <ModalContent>
+        <ModalHeader>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-white">Review Submission</h2>
+            <button
+              onClick={() => setReviewModalOpen(false)}
+              className="p-2 rounded-lg text-surface-400 hover:text-white hover:bg-surface-700 transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </ModalHeader>
+        <ModalBody>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-surface-300 mb-1.5">
@@ -477,7 +485,7 @@ export default function HomeworkDetailPage() {
               />
             </div>
           </div>
-        </ModalContent>
+        </ModalBody>
         <ModalFooter>
           <Button variant="secondary" onClick={() => setReviewModalOpen(false)}>
             Cancel

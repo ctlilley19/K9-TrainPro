@@ -29,6 +29,8 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
 
+    const supabaseAdmin = getSupabaseAdmin();
+
     // Build query
     let query = supabaseAdmin
       .from('badges')
@@ -101,6 +103,8 @@ export async function PATCH(request: NextRequest) {
     if (!badgeId || !action) {
       return NextResponse.json({ error: 'Badge ID and action required' }, { status: 400 });
     }
+
+    const supabaseAdmin = getSupabaseAdmin();
 
     // Get current badge
     const { data: badge, error: fetchError } = await supabaseAdmin

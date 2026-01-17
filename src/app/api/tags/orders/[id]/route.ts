@@ -10,6 +10,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const supabaseAdmin = getSupabaseAdmin();
 
     const { data, error } = await supabaseAdmin
       .from('tag_orders')
@@ -40,6 +41,7 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     const { action, trackingNumber, trackingUrl, carrier, notes } = body;
+    const supabaseAdmin = getSupabaseAdmin();
 
     // Get current order
     const { data: order, error: fetchError } = await supabaseAdmin

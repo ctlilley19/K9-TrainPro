@@ -9,6 +9,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const supabaseAdmin = getSupabaseAdmin();
 
     const { data, error } = await supabaseAdmin
       .from('tag_design_templates')
@@ -41,6 +42,8 @@ export async function PATCH(
       isDefault,
       facilityId,
     } = body;
+
+    const supabaseAdmin = getSupabaseAdmin();
 
     // If setting as default, unset other defaults
     if (isDefault && facilityId) {
@@ -81,6 +84,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const supabaseAdmin = getSupabaseAdmin();
 
     // Check if design is used by any orders
     const { data: orders } = await supabaseAdmin

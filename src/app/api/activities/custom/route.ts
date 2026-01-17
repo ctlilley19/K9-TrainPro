@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing facility ID' }, { status: 400 });
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
+
     // Get custom activity types
     const { data: customTypes, error: customError } = await supabaseAdmin
       .from('custom_activity_types')
@@ -132,6 +134,8 @@ export async function POST(request: NextRequest) {
     if (!facilityId || !code || !label || !iconName) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+
+    const supabaseAdmin = getSupabaseAdmin();
 
     // Validate code format (snake_case)
     const codeRegex = /^[a-z][a-z0-9_]*$/;

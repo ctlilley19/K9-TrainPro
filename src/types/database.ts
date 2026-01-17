@@ -30,7 +30,7 @@ export type ActivityType =
 export type BadgeTier = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
 export type SkillProficiency = 'learning' | 'practicing' | 'mastered';
 export type MediaType = 'photo' | 'video';
-export type SubscriptionTier = 'free' | 'starter' | 'professional' | 'enterprise';
+export type SubscriptionTier = 'free' | 'family_free' | 'family_premium' | 'family_pro' | 'starter' | 'professional' | 'enterprise';
 
 // Homework System Types
 export type HomeworkStatus = 'draft' | 'assigned' | 'in_progress' | 'completed' | 'overdue';
@@ -204,6 +204,8 @@ export interface Facility {
   subscription_tier: SubscriptionTier;
   stripe_customer_id: string | null;
   settings: FacilitySettings | null;
+  free_tags_allowance: number;
+  free_tags_used: number;
   created_at: string;
   updated_at: string;
 }
@@ -669,6 +671,7 @@ export interface HomeworkAssignment {
   title: string;
   description: string | null;
   instructions: string;
+  tips: string | null;
   video_url: string | null;
   difficulty: HomeworkDifficulty;
   assigned_at: string;

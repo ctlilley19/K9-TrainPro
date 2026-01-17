@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing facility ID' }, { status: 400 });
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
+
     const { data, error } = await supabaseAdmin
       .from('tag_design_templates')
       .select('*')
@@ -45,6 +47,8 @@ export async function POST(request: NextRequest) {
     if (!facilityId || !userId || !name || !frontImageUrl) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+
+    const supabaseAdmin = getSupabaseAdmin();
 
     // If setting as default, unset other defaults
     if (isDefault) {

@@ -244,7 +244,7 @@ export default function TagsPage() {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-mono text-sm text-brand-400">{tag.tag_code}</span>
-                        <StatusBadge variant={statusConfig.variant as 'success' | 'warning' | 'error' | 'info' | 'default'} size="xs">
+                        <StatusBadge variant={statusConfig.variant as 'success' | 'warning' | 'danger' | 'info' | 'default'} size="xs">
                           {statusConfig.label}
                         </StatusBadge>
                       </div>

@@ -137,7 +137,7 @@ export default function HomeworkPage() {
           />
           <CardContent>
             <div className="space-y-3">
-              {pendingReviews.slice(0, 3).map((submission: { id: string; assignment?: { dog?: { name?: string }; title?: string }; created_at?: string }) => (
+              {pendingReviews.slice(0, 3).map((submission: { id: string; assignment?: { id?: string; dog?: { name?: string }; title?: string }; created_at?: string }) => (
                 <Link
                   key={submission.id}
                   href={`/homework/${submission.assignment?.id || submission.id}?review=${submission.id}`}

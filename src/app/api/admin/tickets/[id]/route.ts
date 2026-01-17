@@ -28,6 +28,8 @@ export async function GET(
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
+
     // Get ticket
     const { data: ticket, error: ticketError } = await supabaseAdmin
       .from('support_tickets')
@@ -97,6 +99,8 @@ export async function PATCH(
     if (assignedTo !== undefined) updates.assigned_to = assignedTo;
     if (tags !== undefined) updates.tags = tags;
     if (internalNotes !== undefined) updates.internal_notes = internalNotes;
+
+    const supabaseAdmin = getSupabaseAdmin();
 
     // Update ticket
     const { data: ticket, error } = await supabaseAdmin

@@ -625,7 +625,7 @@ export default function LandingPage() {
               <span className="font-bold text-gradient">K9 ProTrain</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-surface-500">
-              <span>Built by trainers, for trainers</span>
+              <span>Built for trainers, by dog lovers</span>
               <span>|</span>
               <span>USMC Veteran Owned</span>
             </div>

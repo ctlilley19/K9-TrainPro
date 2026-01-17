@@ -9,6 +9,8 @@ export async function GET(request: NextRequest) {
     const designType = searchParams.get('designType') || 'default';
     const quantity = parseInt(searchParams.get('quantity') || '1', 10);
 
+    const supabaseAdmin = getSupabaseAdmin();
+
     // Get all pricing tiers
     const { data: allPricing, error: pricingError } = await supabaseAdmin
       .from('tag_pricing')

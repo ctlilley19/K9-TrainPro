@@ -293,7 +293,7 @@ export default function ActivitiesSettingsPage() {
                       }
                       placeholder="e.g., agility_training"
                       disabled={viewMode === 'edit'}
-                      helperText="Lowercase with underscores, cannot be changed later"
+                      hint="Lowercase with underscores, cannot be changed later"
                     />
                   )}
 
@@ -508,7 +508,9 @@ export default function ActivitiesSettingsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         {!activity.showInQuickLog && (
-                          <EyeOff size={14} className="text-surface-500" title="Hidden from Quick Log" />
+                          <span title="Hidden from Quick Log">
+                            <EyeOff size={14} className="text-surface-500" />
+                          </span>
                         )}
                         <Button
                           variant="ghost"

@@ -138,12 +138,10 @@ function NewHomeworkContent() {
       <PageHeader
         title="New Homework Assignment"
         description="Assign homework to a pet parent"
-        breadcrumb={
-          <Link href="/homework" className="flex items-center gap-2 text-surface-400 hover:text-white">
-            <ArrowLeft size={16} />
-            Back to Homework
-          </Link>
-        }
+        breadcrumbs={[
+          { label: 'Homework', href: '/homework' },
+          { label: 'New Assignment' }
+        ]}
       />
 
       {/* Progress Steps */}
@@ -178,8 +176,7 @@ function NewHomeworkContent() {
       {step === 'select-dog' && (
         <Card>
           <CardHeader
-            title="Select Dog"
-            icon={<Dog className="text-brand-400" />}
+            title={<span className="flex items-center gap-2"><Dog className="text-brand-400" size={18} />Select Dog</span>}
           />
           <CardContent>
             <Input
@@ -247,8 +244,7 @@ function NewHomeworkContent() {
       {step === 'select-template' && (
         <Card>
           <CardHeader
-            title="Choose a Template (Optional)"
-            icon={<FileText className="text-brand-400" />}
+            title={<span className="flex items-center gap-2"><FileText className="text-brand-400" size={18} />Choose a Template (Optional)</span>}
           />
           <CardContent>
             <Input
@@ -347,8 +343,7 @@ function NewHomeworkContent() {
       {step === 'customize' && (
         <Card>
           <CardHeader
-            title="Customize Assignment"
-            icon={<Sparkles className="text-brand-400" />}
+            title={<span className="flex items-center gap-2"><Sparkles className="text-brand-400" size={18} />Customize Assignment</span>}
           />
           <CardContent>
             <div className="space-y-4">

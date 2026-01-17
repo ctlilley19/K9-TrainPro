@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing facility ID' }, { status: 400 });
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
       .from('activity_type_overrides')
       .select('*')
@@ -59,6 +60,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid activity type' }, { status: 400 });
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
+
     // Upsert the override
     const { data, error } = await supabaseAdmin
       .from('activity_type_overrides')
@@ -105,6 +108,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin
       .from('activity_type_overrides')
       .delete()

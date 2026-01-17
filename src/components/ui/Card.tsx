@@ -54,20 +54,28 @@ export interface CardHeaderProps extends Omit<HTMLAttributes<HTMLDivElement>, 't
   title?: ReactNode;
   description?: string;
   action?: ReactNode;
+  icon?: ReactNode;
 }
 
 export const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(
-  ({ className, title, description, action, children, ...props }, ref) => {
+  ({ className, title, description, action, icon, children, ...props }, ref) => {
     return (
       <div
         ref={ref}
         className={cn('flex items-start justify-between gap-4', className)}
         {...props}
       >
-        <div className="space-y-1">
-          {title && <CardTitle>{title}</CardTitle>}
-          {description && <CardDescription>{description}</CardDescription>}
-          {children}
+        <div className="flex items-start gap-3">
+          {icon && (
+            <div className="flex-shrink-0 mt-0.5">
+              {icon}
+            </div>
+          )}
+          <div className="space-y-1">
+            {title && <CardTitle>{title}</CardTitle>}
+            {description && <CardDescription>{description}</CardDescription>}
+            {children}
+          </div>
         </div>
         {action && <div className="flex-shrink-0">{action}</div>}
       </div>

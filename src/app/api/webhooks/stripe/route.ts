@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Mark event as processed
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('stripe_events')
       .update({ processed: true, processed_at: new Date().toISOString() })
       .eq('stripe_event_id', event.id);
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
     console.error(`Error handling ${event.type}:`, err);
 
     // Log error
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('stripe_events')
       .update({
         processed: false,
@@ -163,6 +163,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
 }
 
 async function handleTagOrderPayment(orderId: string, session: Stripe.Checkout.Session) {
+  const supabaseAdmin = getSupabaseAdmin();
   // Update order status
   await supabaseAdmin
     .from('tag_orders')
@@ -200,6 +201,7 @@ async function handleTagOrderPayment(orderId: string, session: Stripe.Checkout.S
 }
 
 async function handleSubscriptionChange(subscription: Stripe.Subscription, eventType: string) {
+  const supabaseAdmin = getSupabaseAdmin();
   const facilityId = subscription.metadata?.facility_id;
 
   if (!facilityId) {
@@ -240,13 +242,13 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription, event
 
   // Find facility by customer ID if not in metadata
   const query = facilityId
-    ? getSupabaseAdmin().from('facilities').update(updateData).eq('id', facilityId)
-    : getSupabaseAdmin().from('facilities').update(updateData).eq('stripe_customer_id', subscription.customer as string);
+    ? supabaseAdmin.from('facilities').update(updateData).eq('id', facilityId)
+    : supabaseAdmin.from('facilities').update(updateData).eq('stripe_customer_id', subscription.customer as string);
 
   await query;
 
   // Create/update subscription record
-  await getSupabaseAdmin().from('subscriptions').upsert({
+  await supabaseAdmin.from('subscriptions').upsert({
     stripe_subscription_id: subscription.id,
     stripe_customer_id: subscription.customer as string,
     stripe_price_id: priceId,
@@ -263,7 +265,7 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription, event
   });
 
   // Log subscription event
-  await getSupabaseAdmin().from('subscription_events').insert({
+  await supabaseAdmin.from('subscription_events').insert({
     facility_id: facilityId,
     event_type: eventType.replace('customer.subscription.', ''),
     new_tier: tier,
@@ -272,6 +274,7 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription, event
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+  const supabaseAdmin = getSupabaseAdmin();
   // Update facility to free tier
   await supabaseAdmin
     .from('facilities')
@@ -296,6 +299,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
   if (!invoice.subscription) return;
 
+  const supabaseAdmin = getSupabaseAdmin();
   const { data: facility } = await supabaseAdmin
     .from('facilities')
     .select('id')
@@ -305,7 +309,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
   if (!facility) return;
 
   // Record the invoice
-  await getSupabaseAdmin().from('invoices').upsert({
+  await supabaseAdmin.from('invoices').upsert({
     stripe_invoice_id: invoice.id,
     facility_id: facility.id,
     stripe_payment_intent_id: invoice.payment_intent as string,
@@ -336,7 +340,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
       ? await stripe.charges.retrieve(paymentIntent.latest_charge as string)
       : null;
 
-    await getSupabaseAdmin().from('payments').upsert({
+    await supabaseAdmin.from('payments').upsert({
       stripe_payment_intent_id: paymentIntent.id,
       facility_id: facility.id,
       stripe_charge_id: charge?.id,
@@ -356,6 +360,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
 }
 
 async function handleInvoiceFailed(invoice: Stripe.Invoice) {
+  const supabaseAdmin = getSupabaseAdmin();
   const { data: facility } = await supabaseAdmin
     .from('facilities')
     .select('id')

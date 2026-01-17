@@ -280,6 +280,7 @@ export async function logBillingEvent(
   description: string,
   options?: {
     amount?: number;
+    reason?: string;
     metadata?: Record<string, unknown>;
     ipAddress?: string;
     userAgent?: string;

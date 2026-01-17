@@ -114,7 +114,7 @@ export default function VideosPage() {
 
   const { data: videos = [], isLoading: videosLoading } = useTrainingVideos({
     category: selectedCategory !== 'all' ? selectedCategory : undefined,
-    folder_id: selectedFolder || undefined,
+    folderId: selectedFolder || undefined,
     search: searchQuery || undefined,
   });
   const { data: featuredVideos = [] } = useFeaturedVideos();
@@ -180,7 +180,7 @@ export default function VideosPage() {
               <Video className="text-blue-600" size={20} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{stats?.total_videos || 0}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.totalVideos || 0}</p>
               <p className="text-sm text-gray-600">Total Videos</p>
             </div>
           </div>
@@ -192,7 +192,7 @@ export default function VideosPage() {
               <Eye className="text-green-600" size={20} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{stats?.total_views || 0}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.totalViews || 0}</p>
               <p className="text-sm text-gray-600">Total Views</p>
             </div>
           </div>
@@ -204,7 +204,7 @@ export default function VideosPage() {
               <Share2 className="text-purple-600" size={20} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{stats?.shared_with_clients || 0}</p>
+              <p className="text-2xl font-bold text-gray-900">{0}</p>
               <p className="text-sm text-gray-600">Shared with Clients</p>
             </div>
           </div>
@@ -216,7 +216,7 @@ export default function VideosPage() {
               <Star className="text-yellow-600" size={20} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{stats?.featured_count || 0}</p>
+              <p className="text-2xl font-bold text-gray-900">{featuredVideos?.length || 0}</p>
               <p className="text-sm text-gray-600">Featured Videos</p>
             </div>
           </div>
@@ -644,6 +644,9 @@ export default function VideosPage() {
                   visibility: formData.get('visibility') as VideoVisibility,
                   folder_id: selectedFolder,
                   duration_seconds: parseInt(formData.get('duration') as string) || null,
+                  is_featured: false,
+                  tags: [],
+                  file_size_bytes: null,
                 });
                 setShowUploadModal(false);
               }}
@@ -788,6 +791,8 @@ export default function VideosPage() {
                 await createFolder.mutateAsync({
                   name: formData.get('name') as string,
                   description: formData.get('description') as string || null,
+                  color: '#6366f1',
+                  parent_id: null,
                 });
                 setShowFolderModal(false);
               }}

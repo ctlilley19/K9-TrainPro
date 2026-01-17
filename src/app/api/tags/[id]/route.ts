@@ -9,6 +9,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const supabaseAdmin = getSupabaseAdmin();
 
     const { data, error } = await supabaseAdmin
       .from('tags')
@@ -39,6 +40,7 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     const { action, dogId, userId, reason } = body;
+    const supabaseAdmin = getSupabaseAdmin();
 
     // Get current tag
     const { data: tag, error: tagError } = await supabaseAdmin

@@ -166,12 +166,10 @@ export default function HomeworkTemplatesPage() {
       <PageHeader
         title="Homework Templates"
         description="Create reusable homework templates for quick assignment"
-        breadcrumb={
-          <Link href="/homework" className="flex items-center gap-2 text-surface-400 hover:text-white">
-            <ArrowLeft size={16} />
-            Back to Homework
-          </Link>
-        }
+        breadcrumbs={[
+          { label: 'Homework', href: '/homework' },
+          { label: 'Templates' }
+        ]}
         action={
           <Button variant="primary" leftIcon={<Plus size={18} />} onClick={openCreateModal}>
             New Template

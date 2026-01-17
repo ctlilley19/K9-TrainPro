@@ -14,6 +14,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing facility ID' }, { status: 400 });
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
+
     let query = supabaseAdmin
       .from('tags')
       .select(`

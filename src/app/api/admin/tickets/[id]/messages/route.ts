@@ -35,6 +35,8 @@ export async function POST(
       return NextResponse.json({ error: 'Message content required' }, { status: 400 });
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
+
     // Verify ticket exists
     const { data: ticket, error: ticketError } = await supabaseAdmin
       .from('support_tickets')
@@ -122,6 +124,8 @@ export async function GET(
     if (!['super_admin', 'support'].includes(session.admin.role)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
+
+    const supabaseAdmin = getSupabaseAdmin();
 
     // Get messages
     const { data: messages, error } = await supabaseAdmin

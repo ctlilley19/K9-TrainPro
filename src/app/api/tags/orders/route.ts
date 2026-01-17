@@ -13,6 +13,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing facility ID' }, { status: 400 });
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
+
     const { data, error } = await supabaseAdmin
       .from('tag_orders')
       .select(`
@@ -53,6 +55,8 @@ export async function POST(request: NextRequest) {
     if (!facilityId || !userId || !quantity || !shippingAddress) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+
+    const supabaseAdmin = getSupabaseAdmin();
 
     // Get facility details
     const { data: facility, error: facilityError } = await supabaseAdmin

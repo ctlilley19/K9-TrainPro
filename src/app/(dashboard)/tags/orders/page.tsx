@@ -292,7 +292,7 @@ export default function TagOrdersPage() {
                           #{order.order_number}
                         </span>
                         <StatusBadge
-                          variant={statusConfig.variant as 'success' | 'warning' | 'error' | 'info' | 'default'}
+                          variant={statusConfig.variant as 'success' | 'warning' | 'danger' | 'info' | 'default'}
                           size="xs"
                         >
                           {statusConfig.icon}

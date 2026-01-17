@@ -9,6 +9,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const supabaseAdmin = getSupabaseAdmin();
 
     const { data, error } = await supabaseAdmin
       .from('custom_activity_types')
@@ -33,6 +34,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
+    const supabaseAdmin = getSupabaseAdmin();
     const {
       label,
       description,
@@ -94,6 +96,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const supabaseAdmin = getSupabaseAdmin();
 
     // Check if any activities are using this custom type
     const { data: activities } = await supabaseAdmin

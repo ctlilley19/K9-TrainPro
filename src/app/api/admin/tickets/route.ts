@@ -30,6 +30,8 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
 
+    const supabaseAdmin = getSupabaseAdmin();
+
     // Build query
     let query = supabaseAdmin
       .from('support_tickets')
@@ -92,6 +94,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Subject and description are required' }, { status: 400 });
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
+
     // Create ticket
     const { data: ticket, error } = await supabaseAdmin
       .from('support_tickets')
@@ -153,6 +157,8 @@ export async function PATCH(request: NextRequest) {
     if (!ticketIds || !Array.isArray(ticketIds) || ticketIds.length === 0) {
       return NextResponse.json({ error: 'Ticket IDs required' }, { status: 400 });
     }
+
+    const supabaseAdmin = getSupabaseAdmin();
 
     // Update tickets
     const { error } = await supabaseAdmin

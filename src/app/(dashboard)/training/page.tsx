@@ -253,7 +253,7 @@ export default function TrainingBoardPage() {
           await startActivity.mutateAsync({
             dog_id: movedDog.id,
             program_id: movedDog.programId,
-            type: destColumn,
+            type: destColumn as import('@/types/database').ActivityType,
             trainer_id: user?.id || '',
           });
         } catch (err) {
@@ -315,7 +315,7 @@ export default function TrainingBoardPage() {
         await startActivity.mutateAsync({
           dog_id: dogId,
           program_id: foundDog.programId,
-          type: activityType,
+          type: activityType as import('@/types/database').ActivityType,
           trainer_id: user?.id || '',
           notes,
         });
