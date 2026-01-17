@@ -1,6 +1,8 @@
 [auth]
-site_url = "https://k9protrain.com"
+site_url = "https://k9protrain.com/onboarding"
 additional_redirect_urls = [
+  "https://k9protrain.com/onboarding",
+  "https://k9protrain.com/login",
   "https://k9protrain.com/**",
   "https://www.k9protrain.com/**",
   "https://k9protrain.net/**",

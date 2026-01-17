@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useUser, useUserRole } from '@/stores/authStore';
 import { Avatar } from '@/components/ui/Avatar';
+import { Dog as DogIcon } from 'lucide-react';
 import {
   LayoutDashboard,
-  Dog,
   Users,
   Settings,
   ChevronLeft,
@@ -43,7 +44,7 @@ const navItems: NavItem[] = [
   {
     label: 'Dogs',
     href: '/dogs',
-    icon: <Dog size={20} />,
+    icon: <DogIcon size={20} />,
     // Includes: Dog profiles + Kennels as view/filter
   },
   {
@@ -98,8 +99,14 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex items-center h-16 px-4 border-b border-surface-800">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
-            <Dog size={20} className="text-white" />
+          <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
+            <Image
+              src="/images/k9-logo.png"
+              alt="K9 ProTrain"
+              width={32}
+              height={32}
+              className="w-full h-full object-contain"
+            />
           </div>
           {!isCollapsed && (
             <span className="font-bold text-lg bg-gradient-to-r from-brand-400 to-brand-500 bg-clip-text text-transparent">

@@ -22,6 +22,7 @@ import {
   Crown,
   Sparkles,
 } from 'lucide-react';
+import { PlanChangeConfirmModal } from './PlanChangeConfirmModal';
 
 // Tier configuration (client-side version)
 const BUSINESS_TIERS = {
@@ -100,6 +101,10 @@ export function SubscriptionSettings() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('month');
   const [error, setError] = useState<string | null>(null);
+
+  // Plan change confirmation modal state
+  const [showPlanChangeModal, setShowPlanChangeModal] = useState(false);
+  const [pendingTierChange, setPendingTierChange] = useState<TierKey | null>(null);
 
   useEffect(() => {
     if (facilityId) {
@@ -184,13 +189,41 @@ export function SubscriptionSettings() {
     }
   }
 
-  async function handleUpgrade(tier: TierKey) {
-    if (!facilityId) return;
+  // Show confirmation modal before plan change
+  function handleUpgrade(tier: TierKey) {
+    setPendingTierChange(tier);
+    setShowPlanChangeModal(true);
+  }
 
+  // Process the actual upgrade after confirmation
+  async function handleConfirmedUpgrade(
+    accountType: 'family' | 'business',
+    details: { accountType: 'family' | 'business'; businessName?: string; phone?: string }
+  ) {
+    if (!facilityId || !pendingTierChange) return;
+
+    const tier = pendingTierChange;
     setUpgradeLoading(tier);
     setError(null);
 
     try {
+      // First, update the account details
+      const updateData: Record<string, string | undefined> = {};
+      if (details.phone) updateData.phone = details.phone;
+      if (details.businessName) updateData.name = details.businessName;
+
+      if (Object.keys(updateData).length > 0) {
+        const { error: updateError } = await supabase
+          .from('facilities')
+          .update(updateData)
+          .eq('id', facilityId);
+
+        if (updateError) {
+          console.error('Error updating facility details:', updateError);
+        }
+      }
+
+      // Then proceed with the checkout
       const response = await fetch('/api/billing/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -198,6 +231,7 @@ export function SubscriptionSettings() {
           facilityId,
           tier,
           billingInterval,
+          accountType,
         }),
       });
 
@@ -219,6 +253,8 @@ export function SubscriptionSettings() {
       setError(err instanceof Error ? err.message : 'Failed to start checkout');
     } finally {
       setUpgradeLoading(null);
+      setShowPlanChangeModal(false);
+      setPendingTierChange(null);
     }
   }
 
@@ -550,6 +586,25 @@ export function SubscriptionSettings() {
           )}
         </CardContent>
       </Card>
+
+      {/* Plan Change Confirmation Modal */}
+      {pendingTierChange && (
+        <PlanChangeConfirmModal
+          isOpen={showPlanChangeModal}
+          onClose={() => {
+            setShowPlanChangeModal(false);
+            setPendingTierChange(null);
+          }}
+          onConfirm={handleConfirmedUpgrade}
+          currentTier={currentTier}
+          newTier={pendingTierChange}
+          newTierName={BUSINESS_TIERS[pendingTierChange].name}
+          isUpgrade={
+            Object.keys(BUSINESS_TIERS).indexOf(pendingTierChange) >
+            Object.keys(BUSINESS_TIERS).indexOf(currentTier)
+          }
+        />
+      )}
     </div>
   );
 }

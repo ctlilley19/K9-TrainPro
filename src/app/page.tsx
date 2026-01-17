@@ -4,7 +4,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/Button';
 import {
-  Dog,
   Clock,
   Award,
   FileText,
@@ -148,9 +147,14 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 md:h-16">
             <div className="flex items-center gap-2 md:gap-3">
-              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-brand-500 flex items-center justify-center shadow-glow-amber">
-                <Dog size={20} className="text-white md:hidden" />
-                <Dog size={24} className="text-white hidden md:block" />
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl overflow-hidden">
+                <Image
+                  src="/images/k9-logo.png"
+                  alt="K9 ProTrain"
+                  width={40}
+                  height={40}
+                  className="w-full h-full object-contain"
+                />
               </div>
               <span className="text-lg md:text-xl font-bold text-gradient">K9 ProTrain</span>
             </div>
@@ -619,8 +623,14 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
-                <Dog size={18} className="text-white" />
+              <div className="w-8 h-8 rounded-lg overflow-hidden">
+                <Image
+                  src="/images/k9-logo.png"
+                  alt="K9 ProTrain"
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-contain"
+                />
               </div>
               <span className="font-bold text-gradient">K9 ProTrain</span>
             </div>

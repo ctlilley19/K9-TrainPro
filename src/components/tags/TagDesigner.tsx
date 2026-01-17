@@ -65,6 +65,9 @@ const LAYOUT_OPTIONS = [
   { value: 'logo_only', label: 'Logo Only', icon: '○' },
 ];
 
+// Default K9 ProTrain logo for standard tags
+const DEFAULT_K9_LOGO = '/images/k9-logo.png';
+
 export function TagDesigner({ onSave, onCancel, initialDesign }: TagDesignerProps) {
   const [design, setDesign] = useState<TagDesign>(initialDesign || DEFAULT_DESIGN);
   const [isSaving, setIsSaving] = useState(false);
@@ -175,10 +178,10 @@ export function TagDesigner({ onSave, onCancel, initialDesign }: TagDesignerProp
           </CardContent>
         </Card>
 
-        {/* Image Upload */}
+        {/* Logo Selection */}
         <Card>
           <CardHeader
-            title="Upload Images"
+            title="Logo Selection"
             action={
               design.productType === 'double_sided' && (
                 <div className="flex gap-1 bg-surface-800 rounded-lg p-1">
@@ -209,6 +212,50 @@ export function TagDesigner({ onSave, onCancel, initialDesign }: TagDesignerProp
             }
           />
           <CardContent>
+            {/* Default Logo Option */}
+            <div className="mb-4 p-3 rounded-lg border border-surface-700 bg-surface-800/50">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setDesign((prev) => ({ ...prev, frontImageUrl: DEFAULT_K9_LOGO }))}
+                  className={cn(
+                    'w-16 h-16 rounded-lg overflow-hidden border-2 transition-all',
+                    design.frontImageUrl === DEFAULT_K9_LOGO
+                      ? 'border-brand-500 ring-2 ring-brand-500/30'
+                      : 'border-surface-600 hover:border-surface-500'
+                  )}
+                >
+                  <Image
+                    src={DEFAULT_K9_LOGO}
+                    alt="K9 ProTrain Logo"
+                    width={64}
+                    height={64}
+                    className="w-full h-full object-contain bg-surface-900"
+                  />
+                </button>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-white">K9 ProTrain Default</p>
+                  <p className="text-xs text-surface-400">Standard K9 ProTrain branding</p>
+                  <p className="text-xs text-green-400 mt-1">Included free</p>
+                </div>
+                {design.frontImageUrl === DEFAULT_K9_LOGO && (
+                  <Check size={20} className="text-brand-400" />
+                )}
+              </div>
+            </div>
+
+            {/* Custom Logo Upload Section */}
+            <div className="mb-4 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+              <div className="flex items-start gap-2 mb-2">
+                <span className="px-2 py-0.5 text-xs font-medium bg-amber-500/20 text-amber-400 rounded">
+                  Premium
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-white">Custom Business Logo</p>
+                  <p className="text-xs text-surface-400">Upload your own logo for branded tags (+$2.50/tag)</p>
+                </div>
+              </div>
+            </div>
+
             <input
               ref={frontInputRef}
               type="file"
@@ -227,7 +274,7 @@ export function TagDesigner({ onSave, onCancel, initialDesign }: TagDesignerProp
             {(activeTab === 'front' || design.productType === 'single_sided') && (
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-surface-300">
-                  {design.productType === 'double_sided' ? 'Front Image' : 'Logo Image'}
+                  {design.productType === 'double_sided' ? 'Front Image' : 'Custom Logo'}
                 </label>
                 {design.frontImageUrl ? (
                   <div className="relative">

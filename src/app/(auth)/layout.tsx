@@ -1,4 +1,4 @@
-import { Dog } from 'lucide-react';
+import Image from 'next/image';
 
 export default function AuthLayout({
   children,
@@ -8,10 +8,16 @@ export default function AuthLayout({
   return (
     <div className="min-h-screen bg-surface-950 flex">
       {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 xl:w-2/5 bg-gradient-to-br from-brand-600 to-brand-800 p-12 flex-col justify-between">
+      <div className="hidden lg:flex lg:w-1/2 xl:w-2/5 bg-gradient-to-br from-surface-900 to-surface-950 p-12 flex-col justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center">
-            <Dog size={28} className="text-white" />
+          <div className="w-12 h-12 rounded-xl overflow-hidden">
+            <Image
+              src="/images/k9-logo.png"
+              alt="K9 ProTrain"
+              width={48}
+              height={48}
+              className="w-full h-full object-contain"
+            />
           </div>
           <span className="text-2xl font-bold text-white">K9 ProTrain</span>
         </div>

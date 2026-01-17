@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,7 +12,7 @@ import { isDemoMode } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
-import { Dog, Building, User, Mail, Lock, Eye, EyeOff, CheckCircle2, Inbox } from 'lucide-react';
+import { Building, User, Mail, Lock, Eye, EyeOff, CheckCircle2, Inbox } from 'lucide-react';
 
 const registerSchema = z
   .object({
@@ -122,8 +123,14 @@ export default function RegisterPage() {
     <div>
       {/* Mobile Logo */}
       <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-        <div className="w-12 h-12 rounded-xl bg-brand-500 flex items-center justify-center shadow-glow-amber">
-          <Dog size={28} className="text-white" />
+        <div className="w-12 h-12 rounded-xl overflow-hidden">
+          <Image
+            src="/images/k9-logo.png"
+            alt="K9 ProTrain"
+            width={48}
+            height={48}
+            className="w-full h-full object-contain"
+          />
         </div>
         <span className="text-2xl font-bold text-gradient">K9 ProTrain</span>
       </div>
