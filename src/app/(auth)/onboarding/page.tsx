@@ -9,10 +9,8 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import {
-  Dog,
   Building2,
   Home,
-  Users,
   ArrowRight,
   CheckCircle2,
   Loader2,
@@ -34,7 +32,7 @@ interface OnboardingData {
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user, facility, isAuthenticated, isLoading, isInitialized, updateProfile } = useAuthStore();
+  const { user, isAuthenticated, isLoading, isInitialized } = useAuthStore();
   const [step, setStep] = useState<Step>('account_type');
   const [data, setData] = useState<OnboardingData>({ accountType: null });
   const [saving, setSaving] = useState(false);

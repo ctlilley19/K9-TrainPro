@@ -73,8 +73,14 @@ export default function RegisterPage() {
       <div>
         {/* Mobile Logo */}
         <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-          <div className="w-12 h-12 rounded-xl bg-brand-500 flex items-center justify-center shadow-glow-amber">
-            <Dog size={28} className="text-white" />
+          <div className="w-12 h-12 rounded-xl overflow-hidden">
+            <Image
+              src="/images/k9-logo.png"
+              alt="K9 ProTrain"
+              width={48}
+              height={48}
+              className="w-full h-full object-contain"
+            />
           </div>
           <span className="text-2xl font-bold text-gradient">K9 ProTrain</span>
         </div>
