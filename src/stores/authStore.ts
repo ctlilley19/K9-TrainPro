@@ -261,6 +261,18 @@ export const useAuthStore = create<AuthState>()(
             password,
           });
 
+          // If user/facility is null, email confirmation is required
+          // Don't set authenticated - user needs to confirm email first
+          if (!user || !facility) {
+            set({
+              user: null,
+              facility: null,
+              isAuthenticated: false,
+              isLoading: false,
+            });
+            return;
+          }
+
           set({
             user,
             facility,

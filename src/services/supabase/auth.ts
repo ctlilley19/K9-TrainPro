@@ -28,21 +28,44 @@ export const authService = {
     if (authError) throw authError;
     if (!authData.user) throw new Error('No user returned from sign in');
 
-    // Fetch user profile
-    const { data: user, error: userError } = await supabase
+    // Try to fetch user profile
+    const { data: existingUser, error: userError } = await supabase
       .from('users')
       .select('*')
       .eq('auth_id', authData.user.id)
       .single();
 
-    if (userError) throw userError;
-    if (!user) throw new Error('User profile not found');
+    // If user profile doesn't exist, create it (first login after email confirmation)
+    if (userError || !existingUser) {
+      // Get signup data from user metadata
+      const metadata = authData.user.user_metadata;
+      const facilityName = metadata?.facility_name || 'My Facility';
+      const userName = metadata?.full_name || email.split('@')[0];
+
+      // Create profile using the secure signup function
+      const { data, error } = await supabase.rpc('handle_new_user_signup', {
+        p_auth_id: authData.user.id,
+        p_email: email,
+        p_name: userName,
+        p_facility_name: facilityName,
+      });
+
+      if (error) throw error;
+      if (!data) throw new Error('Failed to create user profile');
+
+      const result = data as { user: User; facility: Facility };
+
+      // Record full login for PIN auth session tracking
+      await recordFullLogin(result.user.id);
+
+      return { user: result.user, facility: result.facility };
+    }
 
     // Fetch facility
     const { data: facility, error: facilityError } = await supabase
       .from('facilities')
       .select('*')
-      .eq('id', user.facility_id)
+      .eq('id', existingUser.facility_id)
       .single();
 
     if (facilityError) throw facilityError;
@@ -51,12 +74,12 @@ export const authService = {
     await supabase
       .from('users')
       .update({ last_login_at: new Date().toISOString() })
-      .eq('id', user.id);
+      .eq('id', existingUser.id);
 
     // Record full login for PIN auth session tracking
-    await recordFullLogin(user.id);
+    await recordFullLogin(existingUser.id);
 
-    return { user, facility };
+    return { user: existingUser, facility };
   },
 
   /**
@@ -67,14 +90,30 @@ export const authService = {
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          // Store signup data in user metadata for profile creation after confirmation
+          facility_name: facilityName,
+          full_name: name,
+        },
+      },
     });
 
     if (authError) throw authError;
     if (!authData.user) throw new Error('No user returned from sign up');
 
+    // Check if email confirmation is required (no session means confirmation pending)
+    const emailConfirmationRequired = !authData.session;
+
+    if (emailConfirmationRequired) {
+      // Email confirmation is required - profile will be created on first login
+      // Return null user/facility to indicate pending confirmation
+      return { user: null, facility: null };
+    }
+
     try {
+      // Session exists - create profile immediately
       // Use the secure signup function to create facility and user profile
-      // This bypasses RLS using SECURITY DEFINER
       const { data, error } = await supabase.rpc('handle_new_user_signup', {
         p_auth_id: authData.user.id,
         p_email: email,
