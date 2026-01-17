@@ -79,6 +79,7 @@ interface SubscriptionData {
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
   stripeCustomerId: string | null;
+  trialEndsAt: string | null;
 }
 
 interface Invoice {
@@ -125,7 +126,8 @@ export function SubscriptionSettings() {
           billing_interval,
           current_period_end,
           cancel_at_period_end,
-          stripe_customer_id
+          stripe_customer_id,
+          trial_ends_at
         `)
         .eq('id', facilityId)
         .single();
@@ -139,15 +141,23 @@ export function SubscriptionSettings() {
         current_period_end?: string | null;
         cancel_at_period_end?: boolean;
         stripe_customer_id?: string | null;
+        trial_ends_at?: string | null;
       };
 
+      // Map 'free' tier to 'starter' for display purposes
+      let displayTier = facilityData.subscription_tier || 'starter';
+      if (displayTier === 'free') {
+        displayTier = 'starter';
+      }
+
       setSubscription({
-        tier: facilityData.subscription_tier || 'starter',
+        tier: displayTier,
         status: facilityData.subscription_status || 'active',
         billingInterval: facilityData.billing_interval || 'month',
         currentPeriodEnd: facilityData.current_period_end ?? null,
         cancelAtPeriodEnd: facilityData.cancel_at_period_end || false,
         stripeCustomerId: facilityData.stripe_customer_id ?? null,
+        trialEndsAt: facilityData.trial_ends_at ?? null,
       });
     } catch (err) {
       console.error('Error fetching subscription:', err);
@@ -159,6 +169,7 @@ export function SubscriptionSettings() {
         currentPeriodEnd: null,
         cancelAtPeriodEnd: false,
         stripeCustomerId: null,
+        trialEndsAt: null,
       });
     } finally {
       setLoading(false);
@@ -344,11 +355,22 @@ export function SubscriptionSettings() {
                   <p className="text-sm text-brand-400">Current Plan</p>
                 </div>
                 <p className="text-2xl font-bold text-white">{currentTierConfig.name}</p>
-                <p className="text-surface-400 mt-1">
-                  {formatCurrency(currentTierConfig.monthlyPrice * 100)}/month
-                  {subscription?.billingInterval === 'year' && ' (billed annually)'}
-                </p>
-                {subscription?.currentPeriodEnd && (
+                {subscription?.status === 'trialing' ? (
+                  <p className="text-green-400 mt-1 font-medium">
+                    Free Trial
+                    {subscription?.trialEndsAt && (
+                      <span className="text-surface-400 font-normal">
+                        {' '}· Ends {formatDate(subscription.trialEndsAt)}
+                      </span>
+                    )}
+                  </p>
+                ) : (
+                  <p className="text-surface-400 mt-1">
+                    {formatCurrency(currentTierConfig.monthlyPrice * 100)}/month
+                    {subscription?.billingInterval === 'year' && ' (billed annually)'}
+                  </p>
+                )}
+                {subscription?.currentPeriodEnd && subscription?.status !== 'trialing' && (
                   <p className="text-sm text-surface-500 mt-2">
                     {subscription.cancelAtPeriodEnd
                       ? `Cancels on ${formatDate(subscription.currentPeriodEnd)}`
@@ -358,10 +380,10 @@ export function SubscriptionSettings() {
               </div>
               <div className="flex flex-col items-end gap-2">
                 <StatusBadge
-                  variant={subscription?.status === 'active' ? 'success' : 'warning'}
+                  variant={subscription?.status === 'trialing' ? 'info' : subscription?.status === 'active' ? 'success' : 'warning'}
                   size="sm"
                 >
-                  {subscription?.status || 'active'}
+                  {subscription?.status === 'trialing' ? '14-Day Trial' : subscription?.status || 'active'}
                 </StatusBadge>
                 {subscription?.stripeCustomerId && (
                   <Button

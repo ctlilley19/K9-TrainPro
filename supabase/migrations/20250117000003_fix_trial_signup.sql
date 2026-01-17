@@ -1,6 +1,7 @@
--- Create a secure function to handle user signup
--- This function runs with SECURITY DEFINER to bypass RLS during signup
+-- Fix signup function to properly set trial information for new users
+-- Also update existing facilities that are on 'free' tier to have trial info
 
+-- Update the signup function to set trial info for new users
 CREATE OR REPLACE FUNCTION handle_new_user_signup(
   p_auth_id UUID,
   p_email TEXT,
@@ -18,7 +19,7 @@ BEGIN
   -- Calculate 14-day trial end date
   v_trial_end := NOW() + INTERVAL '14 days';
 
-  -- Create facility with 14-day free trial
+  -- Create facility with 14-day free trial on Starter plan
   INSERT INTO facilities (
     name,
     email,
@@ -75,5 +76,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Grant execute permission to authenticated users
-GRANT EXECUTE ON FUNCTION handle_new_user_signup TO authenticated;
+-- Update existing facilities on 'free' tier to have proper trial info
+-- Set trial to 14 days from their creation date (or now if created long ago)
+UPDATE facilities
+SET
+  subscription_tier = 'starter',
+  subscription_status = 'trialing',
+  trial_ends_at = GREATEST(created_at + INTERVAL '14 days', NOW() + INTERVAL '14 days'),
+  current_period_end = GREATEST(created_at + INTERVAL '14 days', NOW() + INTERVAL '14 days')
+WHERE subscription_tier = 'free'
+  AND (subscription_status IS NULL OR subscription_status != 'active');
+
+-- Also fix any facilities with NULL subscription_status
+UPDATE facilities
+SET
+  subscription_status = 'trialing',
+  trial_ends_at = COALESCE(trial_ends_at, NOW() + INTERVAL '14 days'),
+  current_period_end = COALESCE(current_period_end, NOW() + INTERVAL '14 days')
+WHERE subscription_status IS NULL;

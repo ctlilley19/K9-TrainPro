@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useUser, useFacility, useAuthStore } from '@/stores/authStore';
 import { Avatar } from '@/components/ui/Avatar';
@@ -22,6 +23,7 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuClick, showMenuButton = false }: HeaderProps) {
+  const router = useRouter();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const user = useUser();
@@ -130,7 +132,7 @@ export function Header({ onMenuClick, showMenuButton = false }: HeaderProps) {
                     <button
                       onClick={() => {
                         setShowUserMenu(false);
-                        // Navigate to profile
+                        router.push('/settings');
                       }}
                       className="w-full flex items-center gap-3 px-3 py-2 text-sm text-surface-300 hover:text-white hover:bg-surface-700 transition-colors"
                     >
@@ -140,7 +142,7 @@ export function Header({ onMenuClick, showMenuButton = false }: HeaderProps) {
                     <button
                       onClick={() => {
                         setShowUserMenu(false);
-                        // Navigate to settings
+                        router.push('/settings');
                       }}
                       className="w-full flex items-center gap-3 px-3 py-2 text-sm text-surface-300 hover:text-white hover:bg-surface-700 transition-colors"
                     >
