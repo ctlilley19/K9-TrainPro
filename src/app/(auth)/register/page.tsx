@@ -8,11 +8,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthStore } from '@/stores/authStore';
-import { isDemoMode } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
-import { Building, User, Mail, Lock, Eye, EyeOff, CheckCircle2, Inbox } from 'lucide-react';
+import { Building, User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 const registerSchema = z
   .object({
@@ -32,8 +31,6 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 export default function RegisterPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [signupComplete, setSignupComplete] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
   const { signUp, isLoading, error } = useAuthStore();
 
   const {
@@ -53,77 +50,12 @@ export default function RegisterPage() {
         password: data.password,
       });
 
-      // In demo mode, go straight to dashboard
-      if (isDemoMode()) {
-        router.push('/dashboard');
-        return;
-      }
-
-      // In production, show email confirmation message
-      setUserEmail(data.email);
-      setSignupComplete(true);
+      // Go directly to onboarding after signup
+      router.push('/onboarding');
     } catch (err) {
       // Error is handled by the store
     }
   };
-
-  // Show success screen after signup
-  if (signupComplete) {
-    return (
-      <div>
-        {/* Mobile Logo */}
-        <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-          <div className="w-12 h-12 rounded-xl overflow-hidden">
-            <Image
-              src="/images/k9-logo.png"
-              alt="K9 ProTrain"
-              width={48}
-              height={48}
-              className="w-full h-full object-contain"
-            />
-          </div>
-          <span className="text-2xl font-bold text-gradient">K9 ProTrain</span>
-        </div>
-
-        <Card variant="bordered" padding="lg">
-          <div className="text-center py-6">
-            <div className="w-16 h-16 rounded-full bg-green-500/15 flex items-center justify-center mx-auto mb-4">
-              <Inbox size={32} className="text-green-400" />
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Check Your Email</h2>
-            <p className="text-surface-400 mb-6">
-              We&apos;ve sent a confirmation link to:
-            </p>
-            <p className="text-brand-400 font-medium mb-6">{userEmail}</p>
-
-            <div className="bg-surface-800 rounded-lg p-4 mb-6 text-left">
-              <h3 className="text-white font-medium mb-2 flex items-center gap-2">
-                <CheckCircle2 size={16} className="text-green-400" />
-                Next Steps
-              </h3>
-              <ol className="text-sm text-surface-300 space-y-2 list-decimal list-inside">
-                <li>Open the email from K9 ProTrain</li>
-                <li>Click the confirmation link</li>
-                <li>You&apos;ll be redirected to sign in</li>
-                <li>Start setting up your facility!</li>
-              </ol>
-            </div>
-
-            <p className="text-xs text-surface-500 mb-4">
-              Didn&apos;t receive the email? Check your spam folder or wait a few minutes.
-            </p>
-
-            <Link
-              href="/login"
-              className="text-brand-400 hover:text-brand-300 font-medium transition-colors text-sm"
-            >
-              Go to Sign In
-            </Link>
-          </div>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div>
