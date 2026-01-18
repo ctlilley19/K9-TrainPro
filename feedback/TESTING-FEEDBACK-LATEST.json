@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-01-18T05:37:51.488Z",
+  "generated_at": "2026-01-18T05:58:20.282Z",
   "summary": {
     "total": 86,
     "not_tested": 84,
@@ -27,7 +27,7 @@
       "path": "/register",
       "category": "Authentication",
       "status": "testing",
-      "notes": "Get started button automatically assumes you are a facility style trainer the app is for families too. Maybe add a slider between the two options for users Family or Business class.",
+      "notes": "Get started button automatically assumes you are a facility style trainer the app is for families too. Maybe add a slider between the two options for users Family or Business class.\n\nthe wording is off based on what K9TrainPros is supposed to be.\nThe problem: The \"I'm a Dog Parent\" card says \"Pet owner working with a trainer\" - which implies they already have a trainer relationship before signing up. But K9TrainPros is a marketplace where dog owners come to find and hire trainers, not just manage an existing relationship.\nWhat it should communicate:\n\nDog parents come to the platform to discover trainers, browse services, and purchase training - they don't need a pre-existing trainer relationship\nThe features listed (progress updates, photo gallery, messaging) kick in after they book with a trainer\n\nSuggested fix for the Dog Parent card:\n\nI'm a Dog Parent\nYour dog's care, all in one place\n\n\nAlso: The \"Family Plan Features\" section at the bottom feels disconnected - it's not clear how it relates to the two options above. Is this a separate tier? An add-on? It might need a brief explanation like \"When you book training, your whole family gets access to...\"",
       "tested_by": "Admin",
       "tested_at": "2026-01-18T05:22:18.885Z",
       "file": "src/app/(auth)/register/page.tsx",
