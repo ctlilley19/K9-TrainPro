@@ -3,10 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
-import { Avatar } from '@/components/ui/Avatar';
 import { StatusBadge } from '@/components/ui/Badge';
 import { cn, formatDate } from '@/lib/utils';
 import {
@@ -15,7 +14,6 @@ import {
   type InvoiceStatus,
 } from '@/services/billing';
 import {
-  CreditCard,
   Plus,
   Search,
   Filter,
@@ -24,8 +22,6 @@ import {
   Send,
   Eye,
   Download,
-  MoreVertical,
-  TrendingUp,
   AlertCircle,
   CheckCircle,
   Clock,
@@ -230,7 +226,7 @@ export default function BillingPage() {
 
       {/* Filters */}
       <Card className="mb-6" padding="sm">
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1 max-w-md">
             <Input
               placeholder="Search invoices..."
@@ -239,18 +235,19 @@ export default function BillingPage() {
               leftIcon={<Search size={16} />}
             />
           </div>
-          <div className="flex gap-2">
-            <select
+          <div className="flex items-center gap-2">
+            <Filter size={16} className="text-surface-400" />
+            <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-surface-800 border border-surface-700 rounded-lg px-3 py-2 text-white text-sm focus:border-brand-500 focus:outline-none"
-            >
-              <option value="all">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="sent">Sent</option>
-              <option value="paid">Paid</option>
-              <option value="overdue">Overdue</option>
-            </select>
+              options={[
+                { value: 'all', label: 'All Status' },
+                { value: 'draft', label: 'Draft' },
+                { value: 'sent', label: 'Sent' },
+                { value: 'paid', label: 'Paid' },
+                { value: 'overdue', label: 'Overdue' },
+              ]}
+            />
           </div>
         </div>
       </Card>

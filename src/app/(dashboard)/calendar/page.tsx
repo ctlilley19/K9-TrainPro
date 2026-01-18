@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
 import {
@@ -22,19 +22,14 @@ import {
   Plus,
   Clock,
   MapPin,
-  Dog,
-  Home,
-  CheckCircle2,
-  XCircle,
   ArrowRight,
-  Users,
   Filter,
-  List,
-  Grid3X3,
+  X,
 } from 'lucide-react';
-import type { CalendarEvent, BoardTrainStayWithDetails } from '@/types/database';
+import type { CalendarEvent } from '@/types/database';
 
 type ViewMode = 'month' | 'week' | 'day' | 'list';
+type EventType = 'all' | 'stay' | 'appointment' | 'block';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
@@ -47,6 +42,11 @@ export default function CalendarPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [showNewEventModal, setShowNewEventModal] = useState(false);
+
+  // Filter state
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterEventType, setFilterEventType] = useState<EventType>('all');
+  const [filterDogId, setFilterDogId] = useState<string>('all');
 
   // Calculate date range for current view
   const dateRange = useMemo(() => {
@@ -71,7 +71,7 @@ export default function CalendarPage() {
     };
   }, [currentDate, viewMode]);
 
-  const { data: events, isLoading: eventsLoading } = useCalendarEvents(dateRange);
+  const { data: events } = useCalendarEvents(dateRange);
   const { data: activeStays } = useActiveStays();
   const { data: upcomingStays } = useUpcomingStays();
   const { data: upcomingAppointments } = useUpcomingAppointments(5);
@@ -79,6 +79,32 @@ export default function CalendarPage() {
 
   const checkInStay = useCheckInStay();
   const checkOutStay = useCheckOutStay();
+
+  // Apply filters to events
+  const filteredEvents = useMemo(() => {
+    if (!events) return [];
+    return events.filter(event => {
+      // Filter by event type
+      if (filterEventType !== 'all' && event.type !== filterEventType) {
+        return false;
+      }
+      // Filter by dog - check if event title contains dog name
+      if (filterDogId !== 'all') {
+        const selectedDog = dogs?.find(d => d.id === filterDogId);
+        if (selectedDog && !event.title.toLowerCase().includes(selectedDog.name.toLowerCase())) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [events, filterEventType, filterDogId, dogs]);
+
+  const hasActiveFilters = filterEventType !== 'all' || filterDogId !== 'all';
+
+  const clearFilters = () => {
+    setFilterEventType('all');
+    setFilterDogId('all');
+  };
 
   // Generate calendar grid for month view
   const calendarDays = useMemo(() => {
@@ -96,10 +122,10 @@ export default function CalendarPage() {
     return days;
   }, [currentDate]);
 
-  // Get events for a specific day
+  // Get events for a specific day (using filtered events)
   const getEventsForDay = (date: Date) => {
-    if (!events) return [];
-    return events.filter(event => {
+    if (!filteredEvents) return [];
+    return filteredEvents.filter(event => {
       const eventStart = new Date(event.start);
       const eventEnd = new Date(event.end);
       const dayStart = new Date(date);
@@ -228,6 +254,83 @@ export default function CalendarPage() {
               </div>
 
               <div className="flex items-center gap-2">
+                {/* Filter Button */}
+                <div className="relative">
+                  <Button
+                    variant={hasActiveFilters ? 'primary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="flex items-center gap-2"
+                  >
+                    <Filter size={16} />
+                    Filter
+                    {hasActiveFilters && (
+                      <span className="ml-1 px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
+                        {(filterEventType !== 'all' ? 1 : 0) + (filterDogId !== 'all' ? 1 : 0)}
+                      </span>
+                    )}
+                  </Button>
+
+                  {/* Filter Dropdown */}
+                  {showFilters && (
+                    <div className="absolute right-0 top-full mt-2 w-64 p-4 rounded-xl bg-surface-800 border border-white/[0.06] shadow-xl z-50">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-medium text-white">Filters</h4>
+                        {hasActiveFilters && (
+                          <button
+                            type="button"
+                            onClick={clearFilters}
+                            className="text-xs text-brand-400 hover:text-brand-300"
+                          >
+                            Clear all
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="space-y-4">
+                        {/* Event Type Filter */}
+                        <Select
+                          label="Event Type"
+                          value={filterEventType}
+                          onChange={(e) => setFilterEventType(e.target.value as EventType)}
+                          options={[
+                            { value: 'all', label: 'All Types' },
+                            { value: 'stay', label: 'Stays' },
+                            { value: 'appointment', label: 'Appointments' },
+                            { value: 'block', label: 'Blocked Time' },
+                          ]}
+                        />
+
+                        {/* Dog Filter */}
+                        <Select
+                          label="Dog"
+                          value={filterDogId}
+                          onChange={(e) => setFilterDogId(e.target.value)}
+                          options={[
+                            { value: 'all', label: 'All Dogs' },
+                            ...(dogs?.map((dog) => ({
+                              value: dog.id,
+                              label: dog.name,
+                            })) || []),
+                          ]}
+                        />
+                      </div>
+
+                      <div className="mt-4 pt-4 border-t border-white/[0.06]">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => setShowFilters(false)}
+                        >
+                          Done
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* View Mode Toggle */}
                 <div className="flex rounded-lg border border-white/[0.06] overflow-hidden">
                   {(['month', 'week', 'day', 'list'] as ViewMode[]).map((mode) => (
                     <button
@@ -441,12 +544,12 @@ export default function CalendarPage() {
             {viewMode === 'list' && (
               <div className="p-4">
                 <div className="space-y-4">
-                  {events?.length === 0 ? (
+                  {filteredEvents?.length === 0 ? (
                     <div className="text-center py-12 text-surface-500">
-                      No events in this period
+                      {hasActiveFilters ? 'No events match your filters' : 'No events in this period'}
                     </div>
                   ) : (
-                    events?.map((event) => (
+                    filteredEvents?.map((event) => (
                       <button
                         key={event.id}
                         type="button"

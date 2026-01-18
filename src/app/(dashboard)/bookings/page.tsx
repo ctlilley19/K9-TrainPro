@@ -3,13 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
-import { Avatar } from '@/components/ui/Avatar';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/ui/Modal';
-import { cn, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import { bookingTypes } from '@/services/supabase/bookings';
 import {
   Calendar,
@@ -19,14 +18,11 @@ import {
   Plus,
   Check,
   X,
-  ChevronLeft,
-  ChevronRight,
   User,
   Phone,
   Mail,
   Dog,
   MessageSquare,
-  MoreVertical,
   ExternalLink,
 } from 'lucide-react';
 
@@ -203,7 +199,7 @@ export default function BookingsPage() {
 
       {/* Filters */}
       <Card className="mb-6" padding="sm">
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1 max-w-md">
             <Input
               placeholder="Search by name or dog..."
@@ -212,22 +208,22 @@ export default function BookingsPage() {
               leftIcon={<Search size={16} />}
             />
           </div>
-          <div className="flex gap-2">
-            <select
+          <div className="flex items-center gap-2">
+            <Filter size={16} className="text-surface-400" />
+            <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-surface-800 border border-surface-700 rounded-lg px-3 py-2 text-white text-sm focus:border-brand-500 focus:outline-none"
-            >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-            <input
+              options={[
+                { value: 'all', label: 'All Status' },
+                { value: 'pending', label: 'Pending' },
+                { value: 'confirmed', label: 'Confirmed' },
+                { value: 'cancelled', label: 'Cancelled' },
+              ]}
+            />
+            <Input
               type="date"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="bg-surface-800 border border-surface-700 rounded-lg px-3 py-2 text-white text-sm focus:border-brand-500 focus:outline-none"
             />
           </div>
         </div>
