@@ -32,6 +32,7 @@ import {
   exportTestReport,
   exportTestReportAsCSV,
   clearAllTestNotes,
+  archiveNotesToHistory,
   type FeatureWithTestNote,
   type TestStatusCounts,
 } from '@/services/test-notes';
@@ -191,6 +192,11 @@ export default function TestingPortalPage() {
     setIsExporting(true);
     setShowExportMenu(false);
     try {
+      // Archive current notes to history before exporting
+      archiveNotesToHistory();
+      // Reload to reflect history changes
+      loadData();
+
       const report = exportTestReport();
       const response = await fetch('/api/admin/testing/export', {
         method: 'POST',
@@ -478,6 +484,7 @@ export default function TestingPortalPage() {
                       feature={feature}
                       onStatusChange={handleStatusChange}
                       onNotesChange={handleNotesChange}
+                      onRefresh={loadData}
                     />
                   ))}
                 </div>

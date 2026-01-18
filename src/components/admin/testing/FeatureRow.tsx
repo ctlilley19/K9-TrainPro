@@ -11,16 +11,23 @@ import {
   AlertTriangle,
   CircleDashed,
   Save,
+  Pencil,
+  Trash2,
+  History,
+  X,
+  Check,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import type { TestNoteStatus } from '@/types/database';
+import type { TestNoteStatus, TestNoteHistoryEntry } from '@/types/database';
 import type { FeatureWithTestNote } from '@/services/test-notes';
+import { updateHistoryEntry, deleteHistoryEntry } from '@/services/test-notes';
 
 interface FeatureRowProps {
   feature: FeatureWithTestNote;
   onStatusChange: (featureId: string, status: TestNoteStatus) => void;
   onNotesChange: (featureId: string, notes: string) => void;
+  onRefresh?: () => void;
 }
 
 const statusOptions: { value: TestNoteStatus; label: string; color: string }[] = [
@@ -47,13 +54,16 @@ const statusBadgeVariants: Record<TestNoteStatus, 'default' | 'success' | 'warni
   blocked: 'warning',
 };
 
-export function FeatureRow({ feature, onStatusChange, onNotesChange }: FeatureRowProps) {
+export function FeatureRow({ feature, onStatusChange, onNotesChange, onRefresh }: FeatureRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [localNotes, setLocalNotes] = useState(feature.testNote?.notes || '');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
+  const [editingHistoryNotes, setEditingHistoryNotes] = useState('');
   const notesTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const currentStatus = feature.testNote?.status || 'not_tested';
+  const history = feature.testNote?.history || [];
 
   // Update local notes when feature changes
   useEffect(() => {
@@ -114,6 +124,33 @@ export function FeatureRow({ feature, onStatusChange, onNotesChange }: FeatureRo
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  // History handlers
+  const handleEditHistory = (entry: TestNoteHistoryEntry) => {
+    setEditingHistoryId(entry.id);
+    setEditingHistoryNotes(entry.notes);
+  };
+
+  const handleSaveHistoryEdit = () => {
+    if (editingHistoryId) {
+      updateHistoryEntry(feature.id, editingHistoryId, { notes: editingHistoryNotes });
+      setEditingHistoryId(null);
+      setEditingHistoryNotes('');
+      onRefresh?.();
+    }
+  };
+
+  const handleCancelHistoryEdit = () => {
+    setEditingHistoryId(null);
+    setEditingHistoryNotes('');
+  };
+
+  const handleDeleteHistory = (entryId: string) => {
+    if (confirm('Delete this feedback entry?')) {
+      deleteHistoryEntry(feature.id, entryId);
+      onRefresh?.();
+    }
   };
 
   return (
@@ -234,6 +271,91 @@ export function FeatureRow({ feature, onStatusChange, onNotesChange }: FeatureRo
             <span>Created: {formatDate(feature.testNote?.created_at || null)}</span>
             <span>Updated: {formatDate(feature.testNote?.updated_at || null)}</span>
           </div>
+
+          {/* History Section */}
+          {history.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-surface-700">
+              <div className="flex items-center gap-2 mb-3">
+                <History size={14} className="text-surface-400" />
+                <span className="text-xs font-medium text-surface-400">Previous Feedback ({history.length})</span>
+              </div>
+              <div className="space-y-2">
+                {[...history].reverse().map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="p-3 rounded-lg bg-surface-800/70 border border-surface-700/50"
+                  >
+                    {editingHistoryId === entry.id ? (
+                      // Editing mode
+                      <div className="space-y-2">
+                        <textarea
+                          value={editingHistoryNotes}
+                          onChange={(e) => setEditingHistoryNotes(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full px-3 py-2 bg-surface-700 border border-surface-600 rounded-lg text-white text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-500"
+                          rows={3}
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); handleSaveHistoryEdit(); }}
+                            leftIcon={<Check size={14} />}
+                            className="h-7 text-xs"
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); handleCancelHistoryEdit(); }}
+                            leftIcon={<X size={14} />}
+                            className="h-7 text-xs"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      // Display mode
+                      <>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <p className="text-sm text-surface-300 whitespace-pre-wrap">{entry.notes}</p>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleEditHistory(entry); }}
+                              className="p-1.5 text-surface-500 hover:text-brand-400 transition-colors"
+                              title="Edit"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteHistory(entry.id); }}
+                              className="p-1.5 text-surface-500 hover:text-red-400 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 mt-2 text-xs text-surface-500">
+                          <StatusBadge variant={statusBadgeVariants[entry.status]} size="sm">
+                            {statusOptions.find(s => s.value === entry.status)?.label}
+                          </StatusBadge>
+                          <span>Added: {formatDate(entry.created_at)}</span>
+                          {entry.exported_at && (
+                            <span className="text-green-500">Exported: {formatDate(entry.exported_at)}</span>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

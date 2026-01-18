@@ -1,7 +1,7 @@
 // Test Notes Service
 // Uses localStorage for persistence (can be migrated to Supabase later)
 
-import type { TestNote, TestNoteStatus, FeatureDefinition } from '@/types/database';
+import type { TestNote, TestNoteStatus, FeatureDefinition, TestNoteHistoryEntry } from '@/types/database';
 import { FEATURES } from '@/lib/testing/features-registry';
 
 const STORAGE_KEY = 'k9_protrain_test_notes';
@@ -268,4 +268,88 @@ export function bulkUpdateStatus(
 export function clearAllTestNotes(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(STORAGE_KEY);
+}
+
+// Archive current notes to history (called when exporting to Claude)
+export function archiveNotesToHistory(): void {
+  const notes = getTestNotes();
+  const timestamp = now();
+
+  for (const note of notes) {
+    // Only archive notes that have content
+    if (note.notes && note.notes.trim()) {
+      const historyEntry: TestNoteHistoryEntry = {
+        id: generateId(),
+        notes: note.notes,
+        status: note.status,
+        created_at: note.updated_at || note.created_at,
+        exported_at: timestamp,
+      };
+
+      // Add to history array
+      if (!note.history) {
+        note.history = [];
+      }
+
+      // Don't duplicate if the notes haven't changed since last archive
+      const lastEntry = note.history[note.history.length - 1];
+      if (!lastEntry || lastEntry.notes !== note.notes) {
+        note.history.push(historyEntry);
+      }
+    }
+  }
+
+  saveTestNotes(notes);
+}
+
+// Update a specific history entry
+export function updateHistoryEntry(
+  featureId: string,
+  historyEntryId: string,
+  updates: Partial<Pick<TestNoteHistoryEntry, 'notes' | 'status'>>
+): TestNote | null {
+  const notes = getTestNotes();
+  const noteIndex = notes.findIndex(n => n.feature_id === featureId);
+
+  if (noteIndex < 0) return null;
+
+  const note = notes[noteIndex];
+  if (!note.history) return null;
+
+  const historyIndex = note.history.findIndex(h => h.id === historyEntryId);
+  if (historyIndex < 0) return null;
+
+  // Update the history entry
+  note.history[historyIndex] = {
+    ...note.history[historyIndex],
+    ...updates,
+  };
+  note.updated_at = now();
+
+  notes[noteIndex] = note;
+  saveTestNotes(notes);
+
+  return note;
+}
+
+// Delete a history entry
+export function deleteHistoryEntry(featureId: string, historyEntryId: string): boolean {
+  const notes = getTestNotes();
+  const noteIndex = notes.findIndex(n => n.feature_id === featureId);
+
+  if (noteIndex < 0) return false;
+
+  const note = notes[noteIndex];
+  if (!note.history) return false;
+
+  const historyIndex = note.history.findIndex(h => h.id === historyEntryId);
+  if (historyIndex < 0) return false;
+
+  note.history.splice(historyIndex, 1);
+  note.updated_at = now();
+
+  notes[noteIndex] = note;
+  saveTestNotes(notes);
+
+  return true;
 }

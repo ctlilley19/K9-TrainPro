@@ -1368,6 +1368,15 @@ export interface KennelQRScanData {
 
 export type TestNoteStatus = 'not_tested' | 'testing' | 'passed' | 'failed' | 'blocked';
 
+// History entry for versioned feedback
+export interface TestNoteHistoryEntry {
+  id: string;
+  notes: string;
+  status: TestNoteStatus;
+  created_at: string;
+  exported_at?: string;  // When this version was exported to Claude
+}
+
 export interface TestNote {
   id: string;
   feature_id: string;
@@ -1380,6 +1389,8 @@ export interface TestNote {
   tested_at: string | null;
   created_at: string;
   updated_at: string;
+  // Version history for feedback tracking
+  history?: TestNoteHistoryEntry[];
 }
 
 export interface FeatureDefinition {
