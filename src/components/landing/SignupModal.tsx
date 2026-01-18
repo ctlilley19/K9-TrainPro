@@ -192,8 +192,8 @@ export function SignupModal({ isOpen, onClose }: SignupModalProps) {
               Continue to Sign Up
             </Button>
             <p className="text-sm text-surface-500 text-center">
-              14-day free trial on all plans. No credit card required.<br />
-              You can upgrade or downgrade anytime.
+              14-day free trial on all plans. Cancel anytime.<br />
+              You can upgrade or downgrade whenever you need.
             </p>
           </div>
         </div>
