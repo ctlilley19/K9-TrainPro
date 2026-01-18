@@ -529,7 +529,7 @@ export default function LandingPage() {
                 <Button variant="glow" size="lg" rightIcon={<ArrowRight size={18} />} onClick={() => setShowSignupModal(true)}>
                   Start 14-Day Free Trial
                 </Button>
-                <p className="text-sm text-surface-500">No credit card required</p>
+                <p className="text-sm text-surface-500">14-day free trial. Cancel anytime.</p>
               </div>
             </div>
           </div>
@@ -612,7 +612,7 @@ export default function LandingPage() {
             </Link>
           </div>
           <p className="text-sm text-surface-500">
-            No credit card required. 14-day free trial. Cancel anytime.
+            14-day free trial. Cancel anytime.
           </p>
         </div>
       </section>
