@@ -26,12 +26,12 @@ const businessFeatures = [
 ];
 
 const familyFeatures = [
+  'Browse & Book Trainers',
   'Daily Progress Updates',
   'Photo & Video Gallery',
-  'Badge Notifications',
-  'Homework Tracking',
   'Direct Messaging with Trainer',
-  'Training Progress History',
+  'Homework Tracking',
+  'Badge & Achievement Alerts',
   'Graduation Certificates',
   'Multiple Dogs Support',
 ];
@@ -138,7 +138,7 @@ export function SignupModal({ isOpen, onClose }: SignupModalProps) {
                 </div>
                 <div>
                   <h3 className="font-semibold text-white text-lg">I&apos;m a Dog Parent</h3>
-                  <p className="text-sm text-surface-400">Pet owner working with a trainer</p>
+                  <p className="text-sm text-surface-400">Your dog&apos;s care, all in one place</p>
                 </div>
               </div>
               <ul className="space-y-2">
@@ -160,9 +160,14 @@ export function SignupModal({ isOpen, onClose }: SignupModalProps) {
           {/* Feature Comparison (shows when a type is selected) */}
           {selectedType && (
             <div className="mb-8 p-4 rounded-xl bg-surface-800/50 border border-surface-700">
-              <h4 className="font-semibold text-white mb-3">
-                {selectedType === 'business' ? 'Business Plan Features' : 'Family Plan Features'}
+              <h4 className="font-semibold text-white mb-1">
+                {selectedType === 'business' ? 'Business Plan Features' : 'What You Get'}
               </h4>
+              <p className="text-sm text-surface-500 mb-3">
+                {selectedType === 'business'
+                  ? 'Everything you need to run your training business'
+                  : 'When you book training, your whole family gets access to:'}
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 {(selectedType === 'business' ? businessFeatures : familyFeatures).map((feature, i) => (
                   <div key={i} className="flex items-center gap-2 text-sm text-surface-300">
