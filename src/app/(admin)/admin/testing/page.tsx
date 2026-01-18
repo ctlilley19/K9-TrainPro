@@ -21,6 +21,7 @@ import {
   FileSpreadsheet,
   FolderOpen,
   X,
+  Bot,
 } from 'lucide-react';
 import { TestingStats } from '@/components/admin/testing/TestingStats';
 import { FeatureRow } from '@/components/admin/testing/FeatureRow';
@@ -55,6 +56,7 @@ export default function TestingPortalPage() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
 
   const categories = useMemo(() => getAllCategories(), []);
 
@@ -184,6 +186,32 @@ export default function TestingPortalPage() {
     setShowExportMenu(false);
   };
 
+  // Export for Claude Code - saves to feedback folder
+  const handleExportForClaude = async () => {
+    setIsExporting(true);
+    setShowExportMenu(false);
+    try {
+      const report = exportTestReport();
+      const response = await fetch('/api/admin/testing/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to export');
+      }
+
+      const result = await response.json();
+      alert(`Feedback exported to:\n${result.latestFilepath}\n\nClaude Code can now read this file and execute your requested changes.`);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export feedback. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // Reset all tests
   const handleResetAll = () => {
     if (confirm('Are you sure you want to reset all test results? This cannot be undone.')) {
@@ -232,7 +260,15 @@ export default function TestingPortalPage() {
               {showExportMenu && (
                 <div className="absolute right-0 mt-1 w-48 bg-surface-800 border border-surface-600 rounded-lg shadow-xl z-10">
                   <button
-                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white hover:bg-surface-700 transition-colors rounded-t-lg"
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white hover:bg-surface-700 transition-colors rounded-t-lg border-b border-surface-600"
+                    onClick={handleExportForClaude}
+                    disabled={isExporting}
+                  >
+                    <Bot size={16} className="text-brand-400" />
+                    {isExporting ? 'Exporting...' : 'Export for Claude Code'}
+                  </button>
+                  <button
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white hover:bg-surface-700 transition-colors"
                     onClick={handleExportJSON}
                   >
                     <FileJson size={16} className="text-blue-400" />

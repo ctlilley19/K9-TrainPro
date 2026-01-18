@@ -194,6 +194,12 @@ export interface TestReport {
     notes: string | null;
     tested_by: string | null;
     tested_at: string | null;
+    // Enhanced location context for Claude Code
+    tab?: string;
+    section?: string;
+    component?: string;
+    file?: string;
+    description?: string;
   }>;
 }
 
@@ -213,6 +219,12 @@ export function exportTestReport(): TestReport {
       notes: f.testNote?.notes || null,
       tested_by: f.testNote?.tested_by || null,
       tested_at: f.testNote?.tested_at || null,
+      // Include enhanced context
+      tab: f.tab,
+      section: f.section,
+      component: f.component,
+      file: f.file,
+      description: f.description,
     })),
   };
 }

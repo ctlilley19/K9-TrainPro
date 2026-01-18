@@ -1388,4 +1388,9 @@ export interface FeatureDefinition {
   path: string;
   category: string;
   description?: string;
+  // Enhanced location info for Claude Code context
+  tab?: string;           // e.g., "General", "Billing", "Security"
+  section?: string;       // e.g., "Header", "Sidebar", "Main Content"
+  component?: string;     // e.g., "UserCard", "DataTable", "Modal"
+  file?: string;          // e.g., "src/app/settings/page.tsx"
 }

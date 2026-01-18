@@ -32,29 +32,29 @@ export const FEATURES: FeatureDefinition[] = [
   // ============================================================================
   // Authentication
   // ============================================================================
-  { id: 'auth.login', name: 'User Login', path: '/login', category: 'Authentication', description: 'Login form with email/password' },
-  { id: 'auth.register', name: 'User Registration', path: '/register', category: 'Authentication', description: 'New user signup flow' },
+  { id: 'auth.login', name: 'User Login', path: '/login', category: 'Authentication', description: 'Login form with email/password', file: 'src/app/(auth)/login/page.tsx' },
+  { id: 'auth.register', name: 'User Registration', path: '/register', category: 'Authentication', description: 'New user signup flow', file: 'src/app/(auth)/register/page.tsx' },
   { id: 'auth.logout', name: 'User Logout', path: '/logout', category: 'Authentication', description: 'Logout and session termination' },
-  { id: 'auth.admin.login', name: 'Admin Login', path: '/admin/login', category: 'Authentication', description: 'Admin portal login' },
-  { id: 'auth.admin.mfa', name: 'Admin MFA', path: '/admin/mfa', category: 'Authentication', description: 'Multi-factor authentication verification' },
-  { id: 'auth.admin.mfa-setup', name: 'Admin MFA Setup', path: '/admin/mfa-setup', category: 'Authentication', description: 'MFA setup and configuration' },
-  { id: 'auth.admin.change-password', name: 'Admin Change Password', path: '/admin/change-password', category: 'Authentication', description: 'Admin password change' },
+  { id: 'auth.admin.login', name: 'Admin Login', path: '/admin/login', category: 'Authentication', description: 'Admin portal login', file: 'src/app/(admin)/admin/login/page.tsx' },
+  { id: 'auth.admin.mfa', name: 'Admin MFA', path: '/admin/mfa', category: 'Authentication', description: 'Multi-factor authentication verification', file: 'src/app/(admin)/admin/mfa/page.tsx' },
+  { id: 'auth.admin.mfa-setup', name: 'Admin MFA Setup', path: '/admin/mfa-setup', category: 'Authentication', description: 'MFA setup and configuration', file: 'src/app/(admin)/admin/mfa-setup/page.tsx' },
+  { id: 'auth.admin.change-password', name: 'Admin Change Password', path: '/admin/change-password', category: 'Authentication', description: 'Admin password change', file: 'src/app/(admin)/admin/change-password/page.tsx' },
 
   // ============================================================================
   // Dashboard
   // ============================================================================
-  { id: 'dashboard.main', name: 'Dashboard Overview', path: '/dashboard', category: 'Dashboard', description: 'Main dashboard with activity summary' },
+  { id: 'dashboard.main', name: 'Dashboard Overview', path: '/dashboard', category: 'Dashboard', description: 'Main dashboard with activity summary', file: 'src/app/(dashboard)/dashboard/page.tsx' },
   { id: 'dashboard.analytics', name: 'Analytics Dashboard', path: '/analytics', category: 'Dashboard', description: 'Business analytics and metrics' },
-  { id: 'dashboard.status-feed', name: 'Live Status Feed', path: '/status-feed', category: 'Dashboard', description: 'Real-time activity feed for dogs' },
+  { id: 'dashboard.status-feed', name: 'Live Status Feed', path: '/status-feed', category: 'Dashboard', description: 'Real-time activity feed for dogs', file: 'src/app/(dashboard)/status-feed/page.tsx' },
 
   // ============================================================================
   // Dog Management
   // ============================================================================
-  { id: 'dogs.list', name: 'Dogs List', path: '/dogs', category: 'Dog Management', description: 'View all dogs' },
-  { id: 'dogs.view', name: 'Dog Profile', path: '/dogs/[id]', category: 'Dog Management', description: 'View individual dog profile' },
-  { id: 'dogs.edit', name: 'Edit Dog', path: '/dogs/[id]/edit', category: 'Dog Management', description: 'Edit dog information' },
-  { id: 'dogs.health', name: 'Dog Health Records', path: '/dogs/[id]/health', category: 'Dog Management', description: 'Health records and vaccinations' },
-  { id: 'dogs.skills', name: 'Dog Skills', path: '/dogs/[id]/skills', category: 'Dog Management', description: 'Skill assessments and progress' },
+  { id: 'dogs.list', name: 'Dogs List', path: '/dogs', category: 'Dog Management', description: 'View all dogs', file: 'src/app/(dashboard)/dogs/page.tsx' },
+  { id: 'dogs.view', name: 'Dog Profile', path: '/dogs/[id]', category: 'Dog Management', description: 'View individual dog profile', file: 'src/app/(dashboard)/dogs/[id]/page.tsx' },
+  { id: 'dogs.edit', name: 'Edit Dog', path: '/dogs/[id]/edit', category: 'Dog Management', description: 'Edit dog information', file: 'src/app/(dashboard)/dogs/[id]/edit/page.tsx' },
+  { id: 'dogs.health', name: 'Dog Health Records', path: '/dogs/[id]/health', category: 'Dog Management', description: 'Health records and vaccinations', file: 'src/app/(dashboard)/dogs/[id]/health/page.tsx' },
+  { id: 'dogs.skills', name: 'Dog Skills', path: '/dogs/[id]/skills', category: 'Dog Management', description: 'Skill assessments and progress', file: 'src/app/(dashboard)/dogs/[id]/skills/page.tsx' },
 
   // ============================================================================
   // Family Management
@@ -125,8 +125,11 @@ export const FEATURES: FeatureDefinition[] = [
   // ============================================================================
   // Settings
   // ============================================================================
-  { id: 'settings.user', name: 'User Settings', path: '/settings', category: 'Settings', description: 'User preferences and settings' },
-  { id: 'settings.business-mode', name: 'Business Mode Settings', path: '/settings/business-mode', category: 'Settings', description: 'Configure business mode' },
+  { id: 'settings.general', name: 'User Settings - General', path: '/settings', category: 'Settings', description: 'General account settings', file: 'src/app/(dashboard)/settings/page.tsx', tab: 'General', section: 'Profile Info' },
+  { id: 'settings.billing', name: 'User Settings - Billing', path: '/settings', category: 'Settings', description: 'Subscription and billing settings', file: 'src/app/(dashboard)/settings/page.tsx', tab: 'Billing', section: 'Subscription' },
+  { id: 'settings.notifications', name: 'User Settings - Notifications', path: '/settings', category: 'Settings', description: 'Notification preferences', file: 'src/app/(dashboard)/settings/page.tsx', tab: 'Notifications' },
+  { id: 'settings.security', name: 'User Settings - Security', path: '/settings', category: 'Settings', description: 'Security and password settings', file: 'src/app/(dashboard)/settings/page.tsx', tab: 'Security' },
+  { id: 'settings.business-mode', name: 'Business Mode Settings', path: '/settings/business-mode', category: 'Settings', description: 'Configure business mode', file: 'src/app/(dashboard)/settings/business-mode/page.tsx' },
 
   // ============================================================================
   // Team Management
@@ -159,8 +162,10 @@ export const FEATURES: FeatureDefinition[] = [
   // ============================================================================
   // Billing
   // ============================================================================
-  { id: 'billing.overview', name: 'Billing Overview', path: '/billing', category: 'Billing', description: 'View billing and subscription' },
-  { id: 'billing.new', name: 'New Payment', path: '/billing/new', category: 'Billing', description: 'Add new payment method' },
+  { id: 'billing.overview', name: 'Billing Overview', path: '/billing', category: 'Billing', description: 'View billing dashboard with revenue, invoices, payments', file: 'src/app/(dashboard)/billing/page.tsx', section: 'Main Dashboard' },
+  { id: 'billing.invoices', name: 'Billing - Invoices Table', path: '/billing', category: 'Billing', description: 'Invoices data table', file: 'src/app/(dashboard)/billing/page.tsx', section: 'Invoices Table' },
+  { id: 'billing.revenue-chart', name: 'Billing - Revenue Chart', path: '/billing', category: 'Billing', description: 'Revenue trends chart', file: 'src/app/(dashboard)/billing/page.tsx', section: 'Revenue Chart' },
+  { id: 'billing.new', name: 'New Payment', path: '/billing/new', category: 'Billing', description: 'Add new payment method', file: 'src/app/(dashboard)/billing/new/page.tsx' },
 
   // ============================================================================
   // Admin Portal
@@ -179,12 +184,20 @@ export const FEATURES: FeatureDefinition[] = [
   { id: 'admin.testing', name: 'Testing Portal', path: '/admin/testing', category: 'Admin Portal', description: 'QA testing tools' },
 
   // ============================================================================
+  // Landing & Marketing
+  // ============================================================================
+  { id: 'landing.hero', name: 'Landing Page - Hero', path: '/', category: 'Dashboard', description: 'Landing page hero section', file: 'src/app/page.tsx', section: 'Hero' },
+  { id: 'landing.features', name: 'Landing Page - Features', path: '/', category: 'Dashboard', description: 'Landing page features section', file: 'src/app/page.tsx', section: 'Features' },
+  { id: 'landing.pricing', name: 'Landing Page - Pricing', path: '/', category: 'Dashboard', description: 'Landing page pricing section', file: 'src/app/page.tsx', section: 'Pricing' },
+  { id: 'landing.footer', name: 'Landing Page - Footer', path: '/', category: 'Dashboard', description: 'Landing page footer', file: 'src/app/page.tsx', section: 'Footer' },
+
+  // ============================================================================
   // Demo & Legal
   // ============================================================================
-  { id: 'demo.main', name: 'Demo Mode', path: '/demo', category: 'Settings', description: 'Demo mode landing' },
-  { id: 'demo.config', name: 'Demo Config', path: '/demo/config', category: 'Settings', description: 'Demo configuration' },
-  { id: 'legal.privacy', name: 'Privacy Policy', path: '/privacy', category: 'Settings', description: 'Privacy policy page' },
-  { id: 'legal.terms', name: 'Terms of Service', path: '/terms', category: 'Settings', description: 'Terms of service page' },
+  { id: 'demo.main', name: 'Demo Mode', path: '/demo', category: 'Settings', description: 'Demo mode landing', file: 'src/app/(dashboard)/demo/page.tsx' },
+  { id: 'demo.config', name: 'Demo Config', path: '/demo/config', category: 'Settings', description: 'Demo configuration', file: 'src/app/(dashboard)/demo/config/page.tsx' },
+  { id: 'legal.privacy', name: 'Privacy Policy', path: '/privacy', category: 'Settings', description: 'Privacy policy page', file: 'src/app/(legal)/privacy/page.tsx' },
+  { id: 'legal.terms', name: 'Terms of Service', path: '/terms', category: 'Settings', description: 'Terms of service page', file: 'src/app/(legal)/terms/page.tsx' },
 ];
 
 // Get features grouped by category
