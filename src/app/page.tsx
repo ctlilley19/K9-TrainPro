@@ -147,13 +147,13 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 md:h-16">
             <div className="flex items-center">
-              <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl overflow-hidden">
+              <div className="h-10 md:h-12 w-auto">
                 <Image
-                  src="/images/k9-logo.png"
+                  src="/images/k9-dog-icon.png"
                   alt="K9 ProTrain"
-                  width={64}
-                  height={64}
-                  className="w-full h-full object-contain"
+                  width={120}
+                  height={48}
+                  className="h-full w-auto object-contain"
                 />
               </div>
             </div>
@@ -622,13 +622,13 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center">
-              <div className="w-12 h-12 rounded-xl overflow-hidden">
+              <div className="h-8 w-auto">
                 <Image
-                  src="/images/k9-logo.png"
+                  src="/images/k9-dog-icon.png"
                   alt="K9 ProTrain"
-                  width={48}
-                  height={48}
-                  className="w-full h-full object-contain"
+                  width={80}
+                  height={32}
+                  className="h-full w-auto object-contain"
                 />
               </div>
             </div>
