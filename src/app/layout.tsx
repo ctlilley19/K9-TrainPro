@@ -45,10 +45,10 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/images/k9-logo.png', type: 'image/png' },
+      { url: '/images/k9-favicon.png', type: 'image/png' },
     ],
     apple: [
-      { url: '/images/k9-logo.png', type: 'image/png' },
+      { url: '/images/k9-favicon.png', type: 'image/png' },
     ],
   },
 };
