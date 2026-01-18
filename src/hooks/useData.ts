@@ -489,35 +489,39 @@ export function useDogs() {
   const facility = useFacility();
   const demoPersona = useDemoPersona();
   const demoFamilyId = useDemoFamilyId();
+  const inDemoMode = isDemoMode();
 
   return useQuery({
-    queryKey: ['dogs', facility?.id, demoPersona],
+    queryKey: ['dogs', facility?.id, demoPersona, inDemoMode],
     queryFn: async () => {
-      if (isDemoMode() || !facility?.id) {
-        // Filter dogs based on demo persona
-        // Dog owners only see their family's dogs
+      // Only show demo data in explicit demo mode
+      if (inDemoMode) {
         if (demoPersona === 'dog_owner' && demoFamilyId) {
           return demoDogs.filter(dog => dog.family_id === demoFamilyId);
         }
-        // Trainers and managers see all dogs
         return demoDogs;
       }
+      // Real mode - return empty array if no facility yet, otherwise fetch real data
+      if (!facility?.id) return [];
       return dogsService.getAll(facility.id);
     },
-    enabled: !!facility?.id || isDemoMode(),
+    enabled: !!facility?.id || inDemoMode,
   });
 }
 
 export function useDog(dogId: string | undefined) {
+  const inDemoMode = isDemoMode();
+
   return useQuery({
-    queryKey: ['dogs', dogId],
+    queryKey: ['dogs', dogId, inDemoMode],
     queryFn: async () => {
-      if (isDemoMode() || !dogId) {
+      if (inDemoMode) {
         return demoDogs.find((d) => d.id === dogId) || null;
       }
+      if (!dogId) return null;
       return dogsService.getById(dogId);
     },
-    enabled: !!dogId,
+    enabled: !!dogId || inDemoMode,
   });
 }
 
@@ -690,11 +694,12 @@ function enrichProgramsWithDogs(programs: Program[]): ProgramWithDog[] {
 
 export function usePrograms(filters?: { status?: 'scheduled' | 'active' | 'completed' | 'cancelled'; dogId?: string }) {
   const facility = useFacility();
+  const inDemoMode = isDemoMode();
 
   return useQuery({
-    queryKey: ['programs', facility?.id, filters],
+    queryKey: ['programs', facility?.id, filters, inDemoMode],
     queryFn: async (): Promise<ProgramWithDog[]> => {
-      if (isDemoMode() || !facility?.id) {
+      if (inDemoMode) {
         let filtered = demoPrograms;
         if (filters?.status) {
           filtered = filtered.filter((p) => p.status === filters.status);
@@ -704,9 +709,10 @@ export function usePrograms(filters?: { status?: 'scheduled' | 'active' | 'compl
         }
         return enrichProgramsWithDogs(filtered);
       }
+      if (!facility?.id) return [];
       return programsService.getAll(facility.id, filters) as Promise<ProgramWithDog[]>;
     },
-    enabled: !!facility?.id || isDemoMode(),
+    enabled: !!facility?.id || inDemoMode,
   });
 }
 
@@ -715,15 +721,18 @@ export function useActivePrograms() {
 }
 
 export function useProgram(programId: string | undefined) {
+  const inDemoMode = isDemoMode();
+
   return useQuery({
-    queryKey: ['programs', programId],
+    queryKey: ['programs', programId, inDemoMode],
     queryFn: async () => {
-      if (isDemoMode() || !programId) {
+      if (inDemoMode) {
         return demoPrograms.find((p) => p.id === programId) || null;
       }
+      if (!programId) return null;
       return programsService.getById(programId);
     },
-    enabled: !!programId,
+    enabled: !!programId || inDemoMode,
   });
 }
 
@@ -735,35 +744,37 @@ export function useFamilies() {
   const facility = useFacility();
   const demoPersona = useDemoPersona();
   const demoFamilyId = useDemoFamilyId();
+  const inDemoMode = isDemoMode();
 
   return useQuery({
-    queryKey: ['families', facility?.id, demoPersona],
+    queryKey: ['families', facility?.id, demoPersona, inDemoMode],
     queryFn: async () => {
-      if (isDemoMode() || !facility?.id) {
-        // Filter families based on demo persona
-        // Dog owners only see their own family
+      if (inDemoMode) {
         if (demoPersona === 'dog_owner' && demoFamilyId) {
           return demoFamilies.filter(family => family.id === demoFamilyId);
         }
-        // Trainers and managers see all families
         return demoFamilies;
       }
+      if (!facility?.id) return [];
       return familiesService.getAll(facility.id);
     },
-    enabled: !!facility?.id || isDemoMode(),
+    enabled: !!facility?.id || inDemoMode,
   });
 }
 
 export function useFamily(familyId: string | undefined) {
+  const inDemoMode = isDemoMode();
+
   return useQuery({
-    queryKey: ['families', familyId],
+    queryKey: ['families', familyId, inDemoMode],
     queryFn: async () => {
-      if (isDemoMode() || !familyId) {
+      if (inDemoMode) {
         return demoFamilies.find((f) => f.id === familyId) || null;
       }
+      if (!familyId) return null;
       return familiesService.getById(familyId);
     },
-    enabled: !!familyId,
+    enabled: !!familyId || inDemoMode,
   });
 }
 
@@ -839,12 +850,20 @@ export interface TrainingBoardDog {
 
 export function useTrainingBoard() {
   const facility = useFacility();
+  const inDemoMode = isDemoMode();
 
   return useQuery({
-    queryKey: ['training-board', facility?.id],
+    queryKey: ['training-board', facility?.id, inDemoMode],
     queryFn: async (): Promise<Record<ActivityType, TrainingBoardDog[]>> => {
-      if (isDemoMode() || !facility?.id) {
+      if (inDemoMode) {
         return getDemoActivities();
+      }
+      if (!facility?.id) {
+        // Return empty board when facility not loaded
+        return {
+          kennel: [], potty: [], training: [], play: [], group_play: [],
+          feeding: [], rest: [], walk: [], grooming: [], medical: [],
+        };
       }
 
       // Fetch current activities and transform to board format
@@ -879,7 +898,7 @@ export function useTrainingBoard() {
 
       return board;
     },
-    enabled: !!facility?.id || isDemoMode(),
+    enabled: !!facility?.id || inDemoMode,
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 }
