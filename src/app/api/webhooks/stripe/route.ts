@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import { getStripe, SUBSCRIPTION_TIERS } from '@/lib/stripe';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { sendVendorOrderEmail, sendOrderConfirmationEmail } from '@/services/email/vendor-order';
+import { sendEmail } from '@/services/email/sender';
 
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
@@ -385,7 +386,7 @@ async function handleInvoiceFailed(invoice: Stripe.Invoice) {
   const supabaseAdmin = getSupabaseAdmin();
   const { data: facility } = await supabaseAdmin
     .from('facilities')
-    .select('id')
+    .select('id, name, email')
     .eq('stripe_customer_id', invoice.customer as string)
     .single();
 
@@ -403,10 +404,93 @@ async function handleInvoiceFailed(invoice: Stripe.Invoice) {
     .update({ subscription_status: 'past_due' })
     .eq('id', facility.id);
 
-  // TODO: Send email notification about failed payment
+  // Send email notification about failed payment
+  if (facility.email) {
+    const amountDue = invoice.amount_due ? `$${(invoice.amount_due / 100).toFixed(2)}` : 'your subscription';
+    await sendEmail({
+      to: facility.email,
+      toName: facility.name,
+      subject: 'Payment Failed - Action Required',
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #ef4444, #dc2626); padding: 32px; text-align: center;">
+            <h1 style="color: #fff; margin: 0;">K9 ProTrain</h1>
+          </div>
+          <div style="padding: 32px; background: #fff;">
+            <h2 style="color: #dc2626;">Payment Failed</h2>
+            <p>Hi ${facility.name},</p>
+            <p>We were unable to process your payment of <strong>${amountDue}</strong>.</p>
+            <p>Please update your payment method to avoid any interruption to your service.</p>
+            <p style="margin: 24px 0;">
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://k9protrain.com'}/settings"
+                 style="background: #ef4444; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                Update Payment Method
+              </a>
+            </p>
+            <p>If you have any questions, please contact our support team.</p>
+          </div>
+          <div style="background: #f4f4f5; padding: 24px; text-align: center; font-size: 12px; color: #666;">
+            <p>&copy; ${new Date().getFullYear()} K9 ProTrain. All rights reserved.</p>
+          </div>
+        </div>
+      `,
+      text: `Payment Failed - Hi ${facility.name}, we were unable to process your payment of ${amountDue}. Please update your payment method at ${process.env.NEXT_PUBLIC_APP_URL || 'https://k9protrain.com'}/settings to avoid any interruption to your service.`,
+    });
+    console.log('Sent payment failed email to:', facility.email);
+  }
 }
 
 async function handleTrialEnding(subscription: Stripe.Subscription) {
-  // TODO: Send email notification about trial ending
-  console.log('Trial ending soon for subscription:', subscription.id);
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data: facility } = await supabaseAdmin
+    .from('facilities')
+    .select('id, name, email')
+    .eq('stripe_customer_id', subscription.customer as string)
+    .single();
+
+  if (!facility?.email) {
+    console.log('Trial ending soon for subscription:', subscription.id, '- no email to send');
+    return;
+  }
+
+  const trialEnd = subscription.trial_end
+    ? new Date(subscription.trial_end * 1000).toLocaleDateString()
+    : 'soon';
+
+  // Send email notification about trial ending
+  await sendEmail({
+    to: facility.email,
+    toName: facility.name,
+    subject: 'Your Trial Ends Soon - Upgrade to Continue',
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #ef4444, #dc2626); padding: 32px; text-align: center;">
+          <h1 style="color: #fff; margin: 0;">K9 ProTrain</h1>
+        </div>
+        <div style="padding: 32px; background: #fff;">
+          <h2 style="color: #333;">Your Trial Ends ${trialEnd}</h2>
+          <p>Hi ${facility.name},</p>
+          <p>Your free trial is ending soon! To continue using K9 ProTrain and keep all your data, please upgrade to a paid plan.</p>
+          <p style="margin: 24px 0;">
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://k9protrain.com'}/settings"
+               style="background: #ef4444; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+              Upgrade Now
+            </a>
+          </p>
+          <p><strong>What happens if you don't upgrade?</strong></p>
+          <ul>
+            <li>You'll lose access to premium features</li>
+            <li>Your data will be preserved for 30 days</li>
+            <li>You can upgrade anytime to restore access</li>
+          </ul>
+          <p>Thanks for trying K9 ProTrain!</p>
+        </div>
+        <div style="background: #f4f4f5; padding: 24px; text-align: center; font-size: 12px; color: #666;">
+          <p>&copy; ${new Date().getFullYear()} K9 ProTrain. All rights reserved.</p>
+        </div>
+      </div>
+    `,
+    text: `Your Trial Ends ${trialEnd} - Hi ${facility.name}, your free trial is ending soon! To continue using K9 ProTrain, please upgrade at ${process.env.NEXT_PUBLIC_APP_URL || 'https://k9protrain.com'}/settings`,
+  });
+  console.log('Sent trial ending email to:', facility.email);
 }

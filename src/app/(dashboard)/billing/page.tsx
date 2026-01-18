@@ -14,6 +14,15 @@ import {
   type InvoiceStatus,
 } from '@/services/billing';
 import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
+import {
   Plus,
   Search,
   Filter,
@@ -26,6 +35,7 @@ import {
   CheckCircle,
   Clock,
   ExternalLink,
+  TrendingUp,
 } from 'lucide-react';
 
 // Mock invoices
@@ -108,6 +118,16 @@ const pendingAmount = mockInvoices
 const overdueAmount = mockInvoices
   .filter((i) => i.status === 'overdue')
   .reduce((sum, i) => sum + i.balance_due, 0);
+
+// Monthly revenue trends (last 6 months)
+const revenueData = [
+  { month: 'Aug', revenue: 8500, invoices: 4 },
+  { month: 'Sep', revenue: 12200, invoices: 6 },
+  { month: 'Oct', revenue: 9800, invoices: 5 },
+  { month: 'Nov', revenue: 15600, invoices: 8 },
+  { month: 'Dec', revenue: 11400, invoices: 6 },
+  { month: 'Jan', revenue: totalRevenue, invoices: mockInvoices.filter(i => i.status === 'paid').length },
+];
 
 export default function BillingPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -198,6 +218,50 @@ export default function BillingPage() {
           </div>
         </Card>
       </div>
+
+      {/* Revenue Trends Chart */}
+      <Card className="mb-6 p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp size={20} className="text-green-400" />
+          <h3 className="font-medium text-white">Revenue Trends</h3>
+          <span className="text-sm text-surface-400 ml-auto">Last 6 months</span>
+        </div>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+              <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} />
+              <YAxis
+                stroke="#94a3b8"
+                fontSize={12}
+                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#1e293b',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                }}
+                formatter={(value: number) => [formatCurrency(value), 'Revenue']}
+                labelStyle={{ color: '#94a3b8' }}
+              />
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                stroke="#22c55e"
+                strokeWidth={2}
+                fill="url(#revenueGradient)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
 
       {/* Overdue Alert */}
       {overdueAmount > 0 && (
