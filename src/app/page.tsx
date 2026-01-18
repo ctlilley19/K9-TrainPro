@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/Button';
+import { SignupModal } from '@/components/landing/SignupModal';
 import {
   Clock,
   Award,
@@ -140,8 +142,12 @@ const includedFeatures = [
 ];
 
 export default function LandingPage() {
+  const [showSignupModal, setShowSignupModal] = useState(false);
+
   return (
     <div className="min-h-screen bg-surface-950">
+      {/* Signup Modal */}
+      <SignupModal isOpen={showSignupModal} onClose={() => setShowSignupModal(false)} />
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-surface-950/80 backdrop-blur-xl border-b border-surface-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -166,9 +172,9 @@ export default function LandingPage() {
               <Link href="/login" className="hidden sm:block">
                 <Button variant="ghost" size="sm">Sign In</Button>
               </Link>
-              <Link href="/register">
-                <Button variant="glow" size="sm" className="text-sm px-3 md:px-4">Get Started</Button>
-              </Link>
+              <Button variant="glow" size="sm" className="text-sm px-3 md:px-4" onClick={() => setShowSignupModal(true)}>
+                Get Started
+              </Button>
             </div>
           </div>
         </div>
@@ -198,11 +204,9 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4">
-            <Link href="/register" className="w-full sm:w-auto">
-              <Button variant="glow" size="lg" rightIcon={<ArrowRight size={18} />} className="w-full sm:w-auto">
-                Start Free Trial
-              </Button>
-            </Link>
+            <Button variant="glow" size="lg" rightIcon={<ArrowRight size={18} />} className="w-full sm:w-auto" onClick={() => setShowSignupModal(true)}>
+              Start Free Trial
+            </Button>
             <Link href="/demo" className="w-full sm:w-auto">
               <Button variant="outline" size="lg" className="w-full sm:w-auto">
                 View Demo
@@ -522,11 +526,9 @@ export default function LandingPage() {
                   <span className="text-surface-600">•</span>
                   <span>Unlimited clients</span>
                 </div>
-                <Link href="/register">
-                  <Button variant="glow" size="lg" rightIcon={<ArrowRight size={18} />}>
-                    Start 14-Day Free Trial
-                  </Button>
-                </Link>
+                <Button variant="glow" size="lg" rightIcon={<ArrowRight size={18} />} onClick={() => setShowSignupModal(true)}>
+                  Start 14-Day Free Trial
+                </Button>
                 <p className="text-sm text-surface-500">No credit card required</p>
               </div>
             </div>
@@ -600,11 +602,9 @@ export default function LandingPage() {
             Whether you&apos;re a trainer looking to save time or a family wanting visibility—start your free trial today.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-            <Link href="/register">
-              <Button variant="glow" size="lg" rightIcon={<ArrowRight size={18} />}>
-                Start Your Free Trial
-              </Button>
-            </Link>
+            <Button variant="glow" size="lg" rightIcon={<ArrowRight size={18} />} onClick={() => setShowSignupModal(true)}>
+              Start Your Free Trial
+            </Button>
             <Link href="/demo">
               <Button variant="outline" size="lg">
                 View Demo First

@@ -90,7 +90,18 @@ export async function POST(request: NextRequest) {
         .eq('id', facilityId);
     }
 
-    // Create checkout session
+    // Check if this is a new signup (no existing subscription) to apply trial
+    const { data: existingFacility } = await supabaseAdmin
+      .from('facilities')
+      .select('subscription_status, trial_ends_at')
+      .eq('id', facilityId)
+      .single();
+
+    const isNewSignup = !existingFacility?.subscription_status ||
+                        existingFacility.subscription_status === 'trialing' ||
+                        existingFacility.subscription_status === 'incomplete';
+
+    // Create checkout session with 14-day trial for new signups
     const session = await getStripe().checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
@@ -102,11 +113,15 @@ export async function POST(request: NextRequest) {
         },
       ],
       subscription_data: {
+        // Apply 14-day trial for new signups
+        ...(isNewSignup && { trial_period_days: 14 }),
         metadata: {
           facility_id: facilityId,
           tier,
         },
       },
+      // Allow promotion codes for discounts
+      allow_promotion_codes: true,
       success_url: successUrl || `${process.env.NEXT_PUBLIC_APP_URL}/settings?tab=billing&success=true`,
       cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/settings?tab=billing&canceled=true`,
       metadata: {
