@@ -186,7 +186,7 @@ export default function TestingPortalPage() {
     setShowExportMenu(false);
   };
 
-  // Export for Claude Code - saves to feedback folder
+  // Export for Claude Code - commits to GitHub or downloads
   const handleExportForClaude = async () => {
     setIsExporting(true);
     setShowExportMenu(false);
@@ -202,8 +202,29 @@ export default function TestingPortalPage() {
         throw new Error('Failed to export');
       }
 
-      const result = await response.json();
-      alert(`Feedback exported to:\n${result.latestFilepath}\n\nClaude Code can now read this file and execute your requested changes.`);
+      const contentType = response.headers.get('content-type');
+
+      // Check if it's a JSON response (GitHub commit succeeded)
+      if (contentType?.includes('application/json')) {
+        const result = await response.json();
+        if (result.method === 'github') {
+          alert('Feedback committed to GitHub!\n\nRun `git pull` in your project, then tell Claude Code:\n"Read feedback/TESTING-FEEDBACK-LATEST.md and fix the issues"');
+          return;
+        }
+      }
+
+      // Fallback: Download the markdown file
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'TESTING-FEEDBACK-LATEST.md';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      alert('Feedback downloaded!\n\nSave this file to your project\'s feedback/ folder, then tell Claude Code:\n"Read feedback/TESTING-FEEDBACK-LATEST.md and fix the issues"');
     } catch (error) {
       console.error('Export failed:', error);
       alert('Failed to export feedback. Please try again.');

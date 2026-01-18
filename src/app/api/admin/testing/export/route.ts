@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const GITHUB_REPO = process.env.GITHUB_REPO || 'ctlilley19/K9-ProTrain';
+const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,37 +13,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No report data' }, { status: 400 });
     }
 
-    // Create feedback directory if it doesn't exist
-    const feedbackDir = join(process.cwd(), 'feedback');
-    try {
-      await mkdir(feedbackDir, { recursive: true });
-    } catch {
-      // Directory might already exist
-    }
-
-    // Generate filename with timestamp
-    const timestamp = new Date().toISOString().split('T')[0];
-    const filename = `TESTING-FEEDBACK-${timestamp}.md`;
-    const filepath = join(feedbackDir, filename);
-
-    // Also save the latest as a fixed filename for easy access
-    const latestFilepath = join(feedbackDir, 'TESTING-FEEDBACK-LATEST.md');
-
     // Format the report as markdown for Claude Code to read
     const markdown = formatReportAsMarkdown(report);
 
-    // Write both files
-    await writeFile(filepath, markdown, 'utf-8');
-    await writeFile(latestFilepath, markdown, 'utf-8');
+    // If GitHub token is configured, commit to repo
+    if (GITHUB_TOKEN) {
+      try {
+        await commitToGitHub(markdown, report);
+        return NextResponse.json({
+          success: true,
+          method: 'github',
+          message: 'Feedback committed to GitHub! Claude Code can now read feedback/TESTING-FEEDBACK-LATEST.md',
+        });
+      } catch (ghError) {
+        console.error('GitHub commit failed:', ghError);
+        // Fall back to download
+      }
+    }
 
-    // Also save raw JSON for reference
-    const jsonFilepath = join(feedbackDir, 'TESTING-FEEDBACK-LATEST.json');
-    await writeFile(jsonFilepath, JSON.stringify(report, null, 2), 'utf-8');
-
-    return NextResponse.json({
-      success: true,
-      filepath: `feedback/${filename}`,
-      latestFilepath: 'feedback/TESTING-FEEDBACK-LATEST.md',
+    // Fallback: Return as downloadable file
+    return new NextResponse(markdown, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/markdown',
+        'Content-Disposition': 'attachment; filename="TESTING-FEEDBACK-LATEST.md"',
+      },
     });
   } catch (error) {
     console.error('Error exporting test report:', error);
@@ -50,6 +46,84 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+async function commitToGitHub(markdown: string, report: unknown) {
+  const filePath = 'feedback/TESTING-FEEDBACK-LATEST.md';
+  const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/${filePath}`;
+
+  // Get current file SHA (needed for updates)
+  let sha: string | undefined;
+  try {
+    const getResponse = await fetch(`${apiUrl}?ref=${GITHUB_BRANCH}`, {
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Accept: 'application/vnd.github.v3+json',
+      },
+    });
+    if (getResponse.ok) {
+      const data = await getResponse.json();
+      sha = data.sha;
+    }
+  } catch {
+    // File doesn't exist yet, that's fine
+  }
+
+  // Commit the file
+  const response = await fetch(apiUrl, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      Accept: 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message: `Update testing feedback - ${new Date().toISOString()}`,
+      content: Buffer.from(markdown).toString('base64'),
+      branch: GITHUB_BRANCH,
+      ...(sha && { sha }),
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`GitHub API error: ${error}`);
+  }
+
+  // Also commit the JSON version
+  const jsonPath = 'feedback/TESTING-FEEDBACK-LATEST.json';
+  const jsonApiUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/${jsonPath}`;
+
+  let jsonSha: string | undefined;
+  try {
+    const getJsonResponse = await fetch(`${jsonApiUrl}?ref=${GITHUB_BRANCH}`, {
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Accept: 'application/vnd.github.v3+json',
+      },
+    });
+    if (getJsonResponse.ok) {
+      const data = await getJsonResponse.json();
+      jsonSha = data.sha;
+    }
+  } catch {
+    // File doesn't exist
+  }
+
+  await fetch(jsonApiUrl, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      Accept: 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message: `Update testing feedback JSON - ${new Date().toISOString()}`,
+      content: Buffer.from(JSON.stringify(report, null, 2)).toString('base64'),
+      branch: GITHUB_BRANCH,
+      ...(jsonSha && { sha: jsonSha }),
+    }),
+  });
 }
 
 function formatReportAsMarkdown(report: {
