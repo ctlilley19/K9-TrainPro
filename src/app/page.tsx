@@ -146,17 +146,16 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-surface-950/80 backdrop-blur-xl border-b border-surface-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 md:h-16">
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl overflow-hidden">
+            <div className="flex items-center">
+              <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl overflow-hidden">
                 <Image
                   src="/images/k9-logo.png"
                   alt="K9 ProTrain"
-                  width={40}
-                  height={40}
+                  width={64}
+                  height={64}
                   className="w-full h-full object-contain"
                 />
               </div>
-              <span className="text-lg md:text-xl font-bold text-gradient">K9 ProTrain</span>
             </div>
             <div className="hidden md:flex items-center gap-6 text-sm">
               <a href="#problem" className="text-surface-400 hover:text-white transition-colors">The Problem</a>
@@ -622,17 +621,16 @@ export default function LandingPage() {
       <footer className="py-12 px-4 border-t border-surface-800">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg overflow-hidden">
+            <div className="flex items-center">
+              <div className="w-12 h-12 rounded-xl overflow-hidden">
                 <Image
                   src="/images/k9-logo.png"
                   alt="K9 ProTrain"
-                  width={32}
-                  height={32}
+                  width={48}
+                  height={48}
                   className="w-full h-full object-contain"
                 />
               </div>
-              <span className="font-bold text-gradient">K9 ProTrain</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-surface-500">
               <span>Built for trainers, by dog lovers</span>
